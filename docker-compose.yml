@@ -1,0 +1,52 @@
+﻿
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: chroniccare-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - chroniccare_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  patients-service:
+    build:
+      context: ./services/patients-service
+      dockerfile: Dockerfile
+    container_name: chroniccare-patients
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:${PATIENTS_PORT:-8001}:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: chroniccare-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "127.0.0.1:5052:80"
+    volumes:
+      - chroniccare_pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  chroniccare_postgres_data:
+  chroniccare_pgadmin_data:
