@@ -17,7 +17,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
   patients-service:
     build:
       context: ./services/patients-service
@@ -31,7 +30,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: chroniccare-pgadmin
@@ -46,6 +44,23 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+  
+  
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: chroniccare-auth
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY doit être définie dans .env}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 
 volumes:
   chroniccare_postgres_data:
