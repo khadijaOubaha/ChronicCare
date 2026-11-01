@@ -8,8 +8,10 @@ from app.models.notification import Notification
 from app.schemas.notification import NotificationCreate
 
 
-def create(db: Session, data: NotificationCreate) -> Notification:
-    notification = Notification(**data.model_dump())
+def create(
+    db: Session, data: NotificationCreate, source_event_id: uuid.UUID | None = None
+) -> Notification:
+    notification = Notification(**data.model_dump(), source_event_id=source_event_id)
     db.add(notification)
     db.commit()
     db.refresh(notification)
