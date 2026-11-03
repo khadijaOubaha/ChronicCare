@@ -1,8 +1,13 @@
-﻿from datetime import date, datetime
+﻿
+from datetime import date, datetime
 from uuid import UUID
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+# Types de maladie autorisés
+DiseaseType = Literal["diabetes_type_2", "hypertension"]
 
 
 class PatientCreate(BaseModel):
@@ -13,6 +18,7 @@ class PatientCreate(BaseModel):
     phone: str | None = Field(default=None, max_length=30)
     email: EmailStr | None = None
     address: str | None = Field(default=None, max_length=500)
+    disease_type: DiseaseType
 
 
 class PatientUpdate(BaseModel):
@@ -23,6 +29,7 @@ class PatientUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=30)
     email: EmailStr | None = None
     address: str | None = Field(default=None, max_length=500)
+    disease_type: DiseaseType | None = None
     is_active: bool | None = None
 
 
@@ -37,6 +44,7 @@ class PatientRead(BaseModel):
     phone: str | None
     email: str | None
     address: str | None
+    disease_type: DiseaseType
     is_active: bool
     created_at: datetime
     updated_at: datetime
