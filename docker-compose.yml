@@ -32,6 +32,20 @@ services:
       postgres:
         condition: service_healthy
     
+  reminders-service:
+    build:
+      context: ./services/reminders-service
+      dockerfile: Dockerfile
+    container_name: chroniccare-reminders
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:${REMINDERS_PORT:-8004}:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: chroniccare-pgadmin
