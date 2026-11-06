@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
-
+ 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
-
+ 
 from app.database import get_db
 from app.models import Teleconsultation, utcnow
 from app.schemas import (
@@ -16,9 +16,9 @@ from app.schemas import (
     TeleconsultationStatusUpdate,
     TeleconsultationUpdate,
 )
-
+ 
 router = APIRouter(prefix="/api/v1/teleconsultations", tags=["teleconsultations"])
-
+ 
 # Transitions de statut autorisées
 ALLOWED_TRANSITIONS = {
     "SCHEDULED": {"COMPLETED", "CANCELLED"},
@@ -26,22 +26,22 @@ ALLOWED_TRANSITIONS = {
     "CANCELLED": set(),
 }
 TERMINAL_STATUSES = {"COMPLETED", "CANCELLED"}
-
-
+ 
+ 
 def to_naive_utc(value: datetime) -> datetime:
     """Convertit une date en UTC sans fuseau (les dates sans fuseau sont supposées UTC)."""
     if value.tzinfo is not None:
         value = value.astimezone(timezone.utc).replace(tzinfo=None)
     return value
-
-
+ 
+ 
 def get_or_404(db: Session, teleconsultation_id: UUID) -> Teleconsultation:
     item = db.get(Teleconsultation, teleconsultation_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Téléconsultation introuvable")
     return item
-
-
+ 
+ 
 def ensure_slot_free(
     db: Session,
     doctor_id: UUID,
@@ -65,15 +65,15 @@ def ensure_slot_free(
             status_code=409,
             detail="Le médecin ou le patient a déjà une téléconsultation à cette date",
         )
-
-
+ 
+ 
 @router.post("", response_model=TeleconsultationRead, status_code=status.HTTP_201_CREATED)
 def create_teleconsultation(payload: TeleconsultationCreate, db: Session = Depends(get_db)):
     when = to_naive_utc(payload.scheduled_at)
     if when <= utcnow():
         raise HTTPException(status_code=400, detail="La date doit être dans le futur")
     ensure_slot_free(db, payload.doctor_id, payload.patient_id, when)
-
+ 
     item = Teleconsultation(
         patient_id=payload.patient_id,
         doctor_id=payload.doctor_id,
@@ -86,8 +86,8 @@ def create_teleconsultation(payload: TeleconsultationCreate, db: Session = Depen
     db.commit()
     db.refresh(item)
     return item
-
-
+ 
+ 
 @router.get("", response_model=TeleconsultationList)
 def list_teleconsultations(
     skip: int = Query(0, ge=0),
@@ -110,7 +110,7 @@ def list_teleconsultations(
         filters.append(Teleconsultation.scheduled_at >= to_naive_utc(date_from))
     if date_to is not None:
         filters.append(Teleconsultation.scheduled_at <= to_naive_utc(date_to))
-
+ 
     total = db.execute(
         select(func.count()).select_from(Teleconsultation).where(*filters)
     ).scalar_one()
@@ -126,13 +126,13 @@ def list_teleconsultations(
         .all()
     )
     return {"items": items, "total": total, "skip": skip, "limit": limit}
-
-
+ 
+ 
 @router.get("/{teleconsultation_id}", response_model=TeleconsultationRead)
 def get_teleconsultation(teleconsultation_id: UUID, db: Session = Depends(get_db)):
     return get_or_404(db, teleconsultation_id)
-
-
+ 
+ 
 @router.put("/{teleconsultation_id}", response_model=TeleconsultationRead)
 def update_teleconsultation(
     teleconsultation_id: UUID,
@@ -140,13 +140,27 @@ def update_teleconsultation(
     db: Session = Depends(get_db),
 ):
     item = get_or_404(db, teleconsultation_id)
-    if item.status in TERMINAL_STATUSES:
+    if item.status == "CANCELLED":
         raise HTTPException(
             status_code=409,
-            detail="Une téléconsultation terminée ou annulée ne peut plus être modifiée",
+            detail="Une téléconsultation annulée ne peut plus être modifiée",
         )
-
+ 
     data = payload.model_dump(exclude_unset=True)
+ 
+    if item.status == "COMPLETED":
+        # Terminée : seul le compte rendu (notes) reste modifiable.
+        if set(data) - {"notes"}:
+            raise HTTPException(
+                status_code=409,
+                detail="Une téléconsultation terminée : seules les notes peuvent être modifiées",
+            )
+        if "notes" in data:
+            item.notes = data["notes"]
+        db.commit()
+        db.refresh(item)
+        return item
+ 
     new_when = item.scheduled_at
     if data.get("scheduled_at") is not None:
         new_when = to_naive_utc(data["scheduled_at"])
@@ -155,7 +169,7 @@ def update_teleconsultation(
     new_doctor = data.get("doctor_id") or item.doctor_id
     new_patient = data.get("patient_id") or item.patient_id
     ensure_slot_free(db, new_doctor, new_patient, new_when, exclude_id=item.id)
-
+ 
     item.doctor_id = new_doctor
     item.patient_id = new_patient
     item.scheduled_at = new_when
@@ -165,8 +179,8 @@ def update_teleconsultation(
     db.commit()
     db.refresh(item)
     return item
-
-
+ 
+ 
 @router.patch("/{teleconsultation_id}/status", response_model=TeleconsultationRead)
 def change_status(
     teleconsultation_id: UUID,
@@ -184,11 +198,12 @@ def change_status(
     db.commit()
     db.refresh(item)
     return item
-
-
+ 
+ 
 @router.delete("/{teleconsultation_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_teleconsultation(teleconsultation_id: UUID, db: Session = Depends(get_db)):
     item = get_or_404(db, teleconsultation_id)
     db.delete(item)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+ 
