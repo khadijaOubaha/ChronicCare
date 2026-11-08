@@ -1,4 +1,5 @@
-﻿from datetime import date, datetime
+﻿
+from datetime import date, datetime
 from uuid import UUID
 from typing import Literal
 

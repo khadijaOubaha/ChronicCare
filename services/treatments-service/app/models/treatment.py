@@ -1,4 +1,3 @@
-
 import enum
 import uuid
 from datetime import date, datetime, timezone
@@ -13,6 +12,11 @@ class TreatmentStatus(str, enum.Enum):
     ACTIVE = "ACTIVE"
     COMPLETED = "COMPLETED"
     STOPPED = "STOPPED"
+
+
+class Disease(str, enum.Enum):
+    TYPE_2_DIABETES = "TYPE_2_DIABETES"
+    HYPERTENSION = "HYPERTENSION"
 
 
 class Treatment(Base):
@@ -32,6 +36,11 @@ class Treatment(Base):
 
     prescribed_by: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
+        nullable=False,
+    )
+
+    disease: Mapped[Disease] = mapped_column(
+        Enum(Disease, name="treatment_disease", native_enum=False),
         nullable=False,
     )
 

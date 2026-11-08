@@ -1,14 +1,20 @@
-
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    model_validator,
+    field_validator,
+)
 
-from app.models.treatment import TreatmentStatus
+from app.models.treatment import TreatmentStatus, Disease
 
 
 class TreatmentCreate(BaseModel):
     patient_id: UUID
+    disease: Disease
     medication_name: str = Field(min_length=1, max_length=200)
     dosage: str = Field(min_length=1, max_length=100)
     frequency: str = Field(min_length=1, max_length=200)
@@ -26,6 +32,7 @@ class TreatmentCreate(BaseModel):
 
 
 class TreatmentUpdate(BaseModel):
+    disease: Disease | None = None
     medication_name: str | None = Field(
         default=None, min_length=1, max_length=200
     )
@@ -35,6 +42,13 @@ class TreatmentUpdate(BaseModel):
     end_date: date | None = None
     instructions: str | None = None
 
+    @field_validator("disease")
+    @classmethod
+    def validate_disease(cls, value):
+        if value is None:
+            raise ValueError("Le champ disease ne peut pas être null.")
+        return value
+
 
 class TreatmentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -42,6 +56,7 @@ class TreatmentRead(BaseModel):
     id: UUID
     patient_id: UUID
     prescribed_by: UUID
+    disease: Disease
     medication_name: str
     dosage: str
     frequency: str

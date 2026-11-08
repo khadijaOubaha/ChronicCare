@@ -61,6 +61,25 @@ services:
       postgres:
         condition: service_healthy
 
+  
+  treatments-service:
+    build:
+      context: ./services/treatments-service
+      dockerfile: Dockerfile
+    container_name: chroniccare-treatments
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY doit être définie dans .env}
+      PATIENTS_SERVICE_URL: "http://patients-service:8001"
+    ports:
+      - "127.0.0.1:${TREATMENTS_PORT:-8002}:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      patients-service:
+        condition: service_started
+
 
 volumes:
   chroniccare_postgres_data:
