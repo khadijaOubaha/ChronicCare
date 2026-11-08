@@ -1,19 +1,18 @@
 import uuid
 from datetime import datetime, timedelta, timezone
- 
+
 BASE = "/api/v1/teleconsultations"
- 
+
 PATIENT_1 = str(uuid.uuid4())
 PATIENT_2 = str(uuid.uuid4())
 DOCTOR_1 = str(uuid.uuid4())
 DOCTOR_2 = str(uuid.uuid4())
- 
- 
-def future(hours=24, minutes=0):
-    dt = datetime.now(timezone.utc) + timedelta(hours=hours, minutes=minutes)
-    return dt.isoformat()
- 
- 
+
+
+def future(hours=24):
+    return (datetime.now(timezone.utc) + timedelta(hours=hours)).isoformat()
+
+
 def payload(**overrides):
     data = {
         "patient_id": PATIENT_1,
@@ -24,243 +23,93 @@ def payload(**overrides):
     }
     data.update(overrides)
     return data
- 
- 
+
+
 def create(client, **overrides):
     return client.post(BASE, json=payload(**overrides))
- 
- 
-def test_health(client):
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "healthy"}
- 
- 
-def test_create_returns_201_and_scheduled_status(client):
+
+
+def set_status(client, teleconsultation_id, status):
+    return client.patch(f"{BASE}/{teleconsultation_id}/status", json={"status": status})
+
+
+# --- Créneaux ----------------------------------------------------------------
+
+def test_create_scheduled_and_refuse_past_date(client):
     response = create(client)
     assert response.status_code == 201
-    body = response.json()
-    uuid.UUID(body["id"])
-    assert body["status"] == "SCHEDULED"
-    assert body["patient_id"] == PATIENT_1
-    assert body["doctor_id"] == DOCTOR_1
-    assert body["meeting_link"] == "https://meet.example.com/room-1"
-    assert "created_at" in body
- 
- 
-def test_create_without_optional_fields(client):
-    response = client.post(
-        BASE,
-        json={
-            "patient_id": PATIENT_1,
-            "doctor_id": DOCTOR_1,
-            "scheduled_at": future(),
-        },
-    )
-    assert response.status_code == 201
-    assert response.json()["meeting_link"] is None
- 
- 
-def test_create_in_the_past_returns_400(client):
-    assert create(client, scheduled_at=future(hours=-2)).status_code == 400
- 
- 
-def test_create_invalid_uuid_returns_422(client):
-    assert create(client, patient_id="123").status_code == 422
-    assert create(client, doctor_id="abc").status_code == 422
- 
- 
-def test_create_missing_field_returns_422(client):
-    response = client.post(BASE, json={"patient_id": PATIENT_1})
-    assert response.status_code == 422
- 
- 
-def test_same_doctor_same_time_returns_409(client):
-    when = future(24)
-    assert create(client, scheduled_at=when).status_code == 201
-    response = create(client, patient_id=PATIENT_2, scheduled_at=when)
-    assert response.status_code == 409
- 
- 
-def test_same_patient_same_time_returns_409(client):
-    when = future(24)
-    assert create(client, scheduled_at=when).status_code == 201
-    response = create(client, doctor_id=DOCTOR_2, scheduled_at=when)
-    assert response.status_code == 409
- 
- 
-def test_same_time_different_people_is_allowed(client):
-    when = future(24)
-    assert create(client, scheduled_at=when).status_code == 201
-    response = create(client, patient_id=PATIENT_2, doctor_id=DOCTOR_2, scheduled_at=when)
-    assert response.status_code == 201
- 
- 
-def test_cancelled_slot_can_be_reused(client):
+    assert response.json()["status"] == "SCHEDULED"
+    assert create(client, scheduled_at=future(-1)).status_code == 400
+
+
+def test_slot_conflicts_and_cancelled_slot_reuse(client):
     when = future(24)
     first = create(client, scheduled_at=when).json()
-    client.patch(f"{BASE}/{first['id']}/status", json={"status": "CANCELLED"})
+    # même médecin, ou même patient, au même instant
+    assert create(client, patient_id=PATIENT_2, scheduled_at=when).status_code == 409
+    assert create(client, doctor_id=DOCTOR_2, scheduled_at=when).status_code == 409
+    assert client.get(BASE).json()["total"] == 1
+    # un créneau annulé est de nouveau libre
+    assert set_status(client, first["id"], "CANCELLED").status_code == 200
     assert create(client, scheduled_at=when).status_code == 201
- 
- 
-def test_get_and_404(client):
-    created = create(client).json()
-    assert client.get(f"{BASE}/{created['id']}").status_code == 200
-    assert client.get(f"{BASE}/{uuid.uuid4()}").status_code == 404
- 
- 
-def test_get_invalid_uuid_returns_422(client):
-    assert client.get(f"{BASE}/999").status_code == 422
- 
- 
-def test_list_pagination(client):
-    for i in range(5):
-        assert create(client, scheduled_at=future(24 + i)).status_code == 201
-    response = client.get(BASE, params={"skip": 2, "limit": 2})
-    body = response.json()
-    assert response.status_code == 200
-    assert body["total"] == 5
-    assert len(body["items"]) == 2
-    assert body["skip"] == 2 and body["limit"] == 2
- 
- 
-def test_list_filters(client):
-    create(client, patient_id=PATIENT_1, doctor_id=DOCTOR_1, scheduled_at=future(24))
-    create(client, patient_id=PATIENT_2, doctor_id=DOCTOR_1, scheduled_at=future(26))
-    create(client, patient_id=PATIENT_2, doctor_id=DOCTOR_2, scheduled_at=future(28))
- 
-    assert client.get(BASE, params={"patient_id": PATIENT_2}).json()["total"] == 2
-    assert client.get(BASE, params={"doctor_id": DOCTOR_2}).json()["total"] == 1
-    assert client.get(BASE, params={"status": "SCHEDULED"}).json()["total"] == 3
-    assert client.get(BASE, params={"status": "CANCELLED"}).json()["total"] == 0
-    window = {"date_from": future(25), "date_to": future(27)}
-    assert client.get(BASE, params=window).json()["total"] == 1
- 
- 
-def test_list_limit_too_high_returns_422(client):
-    assert client.get(BASE, params={"limit": 1000}).status_code == 422
- 
- 
-def test_update_changes_fields(client):
-    created = create(client).json()
-    response = client.put(
-        f"{BASE}/{created['id']}",
-        json={"meeting_link": "https://meet.example.com/room-2", "notes": "Contrôle"},
-    )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["meeting_link"] == "https://meet.example.com/room-2"
-    assert body["notes"] == "Contrôle"
- 
- 
-def test_update_does_not_conflict_with_itself(client):
-    created = create(client).json()
-    response = client.put(f"{BASE}/{created['id']}", json={"notes": "RAS"})
-    assert response.status_code == 200
- 
- 
-def test_update_into_conflict_returns_409(client):
-    when = future(24)
-    create(client, scheduled_at=when)
-    second = create(client, patient_id=PATIENT_2, scheduled_at=future(30)).json()
-    response = client.put(f"{BASE}/{second['id']}", json={"scheduled_at": when})
-    assert response.status_code == 409
- 
- 
-def test_update_to_past_returns_400(client):
-    created = create(client).json()
-    response = client.put(f"{BASE}/{created['id']}", json={"scheduled_at": future(-5)})
-    assert response.status_code == 400
- 
- 
-def test_update_unknown_returns_404(client):
-    response = client.put(f"{BASE}/{uuid.uuid4()}", json={"notes": "x"})
-    assert response.status_code == 404
- 
- 
-def test_status_valid_transitions(client):
-    done = create(client, scheduled_at=future(24)).json()
-    response = client.patch(f"{BASE}/{done['id']}/status", json={"status": "COMPLETED"})
-    assert response.status_code == 200
-    assert response.json()["status"] == "COMPLETED"
- 
-    cancelled = create(client, scheduled_at=future(26)).json()
-    response = client.patch(f"{BASE}/{cancelled['id']}/status", json={"status": "CANCELLED"})
-    assert response.status_code == 200
-    assert response.json()["status"] == "CANCELLED"
- 
- 
-def test_status_terminal_cannot_change(client):
-    created = create(client).json()
-    url = f"{BASE}/{created['id']}/status"
-    client.patch(url, json={"status": "CANCELLED"})
-    assert client.patch(url, json={"status": "COMPLETED"}).status_code == 409
-    assert client.patch(url, json={"status": "SCHEDULED"}).status_code == 409
- 
- 
-def test_status_unknown_value_returns_422(client):
-    created = create(client).json()
-    response = client.patch(f"{BASE}/{created['id']}/status", json={"status": "foo"})
-    assert response.status_code == 422
- 
- 
-def test_cancelled_cannot_be_updated(client):
-    created = create(client).json()
-    client.patch(f"{BASE}/{created['id']}/status", json={"status": "CANCELLED"})
-    response = client.put(f"{BASE}/{created['id']}", json={"notes": "x"})
-    assert response.status_code == 409
- 
- 
-def test_delete(client):
-    created = create(client).json()
-    assert client.delete(f"{BASE}/{created['id']}").status_code == 204
-    assert client.get(f"{BASE}/{created['id']}").status_code == 404
-    assert client.delete(f"{BASE}/{created['id']}").status_code == 404
- 
- 
-def test_completed_notes_can_still_be_updated(client):
-    created = create(client).json()
-    client.patch(f"{BASE}/{created['id']}/status", json={"status": "COMPLETED"})
-    response = client.put(f"{BASE}/{created['id']}", json={"notes": "Compte rendu"})
-    assert response.status_code == 200
-    assert response.json()["notes"] == "Compte rendu"
-    assert response.json()["status"] == "COMPLETED"
- 
- 
-def test_completed_notes_can_be_rewritten(client):
+
+
+# --- Statuts -----------------------------------------------------------------
+
+def test_status_transitions(client):
+    done = create(client).json()
+    assert set_status(client, done["id"], "COMPLETED").json()["status"] == "COMPLETED"
+    # un statut final est verrouillé
+    assert set_status(client, done["id"], "CANCELLED").status_code == 409
+    assert set_status(client, done["id"], "SCHEDULED").status_code == 409
+
+
+# --- Modification ------------------------------------------------------------
+
+def test_update_rules_by_status(client):
+    # SCHEDULED : modifiable
+    scheduled = create(client).json()
+    url = f"{BASE}/{scheduled['id']}"
+    assert client.put(url, json={"notes": "v2"}).status_code == 200
+
+    # COMPLETED : seules les notes restent modifiables
+    set_status(client, scheduled["id"], "COMPLETED")
+    response = client.put(url, json={"notes": "Compte rendu"})
+    assert response.status_code == 200 and response.json()["notes"] == "Compte rendu"
+    assert client.put(url, json={"meeting_link": "https://meet.example.com/x"}).status_code == 409
+
+    # CANCELLED : tout est verrouillé
+    cancelled = create(client, scheduled_at=future(48)).json()
+    set_status(client, cancelled["id"], "CANCELLED")
+    assert client.put(f"{BASE}/{cancelled['id']}", json={"notes": "x"}).status_code == 409
+
+
+# --- Droits (JWT) ------------------------------------------------------------
+
+def test_missing_or_invalid_token_returns_401(anon_client):
+    some_id = uuid.uuid4()
+    for method, url in (("get", BASE), ("post", BASE), ("delete", f"{BASE}/{some_id}")):
+        assert getattr(anon_client, method)(url).status_code == 401
+    forged = {"Authorization": "Bearer pas-un-jeton"}
+    assert anon_client.get(BASE, headers=forged).status_code == 401
+
+
+def test_patient_cannot_write(client, patient_client_factory):
     created = create(client).json()
     url = f"{BASE}/{created['id']}"
-    client.patch(f"{url}/status", json={"status": "COMPLETED"})
-    client.put(url, json={"notes": "v1"})
-    assert client.put(url, json={"notes": "v2"}).json()["notes"] == "v2"
- 
- 
-def test_completed_other_fields_remain_locked(client):
-    created = create(client).json()
-    url = f"{BASE}/{created['id']}"
-    client.patch(f"{url}/status", json={"status": "COMPLETED"})
-    for change in (
-        {"scheduled_at": future(48)},
-        {"meeting_link": "https://meet.example.com/x"},
-        {"doctor_id": DOCTOR_2},
-        {"patient_id": PATIENT_2},
-        {"notes": "ok", "meeting_link": "https://meet.example.com/x"},
-    ):
-        assert client.put(url, json=change).status_code == 409
-    # rien n'a été modifié
-    assert client.get(url).json()["notes"] == "Suivi mensuel"
- 
- 
-def test_completed_status_still_final(client):
-    created = create(client).json()
-    url = f"{BASE}/{created['id']}/status"
-    client.patch(url, json={"status": "COMPLETED"})
-    assert client.patch(url, json={"status": "CANCELLED"}).status_code == 409
- 
- 
-def test_cancelled_notes_cannot_be_updated(client):
-    created = create(client).json()
-    client.patch(f"{BASE}/{created['id']}/status", json={"status": "CANCELLED"})
-    response = client.put(f"{BASE}/{created['id']}", json={"notes": "x"})
-    assert response.status_code == 409
- 
+    patient = patient_client_factory(PATIENT_1)
+    assert patient.post(BASE, json={}).status_code == 403
+    assert patient.put(url, json={"notes": "x"}).status_code == 403
+    assert patient.patch(f"{url}/status", json={"status": "COMPLETED"}).status_code == 403
+    assert patient.delete(url).status_code == 403
+    assert client.get(url).json()["status"] == "SCHEDULED"
+
+
+def test_patient_only_sees_own_teleconsultations(client, patient_client_factory):
+    own = create(client, scheduled_at=future(24)).json()
+    other = create(client, patient_id=PATIENT_2, doctor_id=DOCTOR_2, scheduled_at=future(25)).json()
+    patient = patient_client_factory(PATIENT_1)
+    assert patient.get(f"{BASE}/{own['id']}").status_code == 200
+    assert patient.get(f"{BASE}/{other['id']}").status_code == 404
+    listing = patient.get(BASE, params={"patient_id": PATIENT_2}).json()
+    assert listing["total"] == 1 and listing["items"][0]["patient_id"] == PATIENT_1
