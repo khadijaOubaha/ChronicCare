@@ -1,1 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="15" time="1.832" timestamp="2026-11-04T22:46:21.749100+01:00" hostname="DESKTOP-5E0FDFV"><testcase classname="tests.test_create" name="test_create_patient_success" time="0.451" /><testcase classname="tests.test_delete" name="test_delete_patient" time="0.133" /><testcase classname="tests.test_delete" name="test_delete_patient_not_found" time="0.041" /><testcase classname="tests.test_health" name="test_root" time="0.026" /><testcase classname="tests.test_health" name="test_health" time="0.033" /><testcase classname="tests.test_list" name="test_list_patients" time="0.222" /><testcase classname="tests.test_list" name="test_list_patients_with_pagination" time="0.066" /><testcase classname="tests.test_read" name="test_get_patient_by_id" time="0.124" /><testcase classname="tests.test_read" name="test_get_patient_not_found" time="0.056" /><testcase classname="tests.test_update" name="test_update_patient" time="0.178" /><testcase classname="tests.test_update" name="test_update_patient_not_found" time="0.055" /><testcase classname="tests.test_validation" name="test_create_patient_invalid_email" time="0.058" /><testcase classname="tests.test_validation" name="test_create_patient_invalid_sex" time="0.031" /><testcase classname="tests.test_validation" name="test_create_patient_missing_first_name" time="0.038" /><testcase classname="tests.test_validation" name="test_create_patient_empty_first_name" time="0.033" /></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites name="pytest tests">
+    <testsuite name="pytest" errors="0" failures="0" skipped="0" tests="15" time="1.832" timestamp="2026-11-04T22:46:21.749100+01:00" hostname="DESKTOP-5E0FDFV"><testcase classname="tests.test_create" name="test_create_patient_success" time="0.451" />
+        <testcase classname="tests.test_delete" name="test_delete_patient" time="0.133" />
+        <testcase classname="tests.test_delete" name="test_delete_patient_not_found" time="0.041" />
+        <testcase classname="tests.test_health" name="test_root" time="0.026" /><testcase classname="tests.test_health" name="test_health" time="0.033" />
+        <testcase classname="tests.test_list" name="test_list_patients" time="0.222" />
+        <testcase classname="tests.test_list" name="test_list_patients_with_pagination" time="0.066" />
+        <testcase classname="tests.test_read" name="test_get_patient_by_id" time="0.124" />
+        <testcase classname="tests.test_read" name="test_get_patient_not_found" time="0.056" />
+        <testcase classname="tests.test_update" name="test_update_patient" time="0.178" />
+        <testcase classname="tests.test_update" name="test_update_patient_not_found" time="0.055" />
+        <testcase classname="tests.test_validation" name="test_create_patient_invalid_email" time="0.058" />
+        <testcase classname="tests.test_validation" name="test_create_patient_invalid_sex" time="0.031" />
+        <testcase classname="tests.test_validation" name="test_create_patient_missing_first_name" time="0.038" />
+        <testcase classname="tests.test_validation" name="test_create_patient_empty_first_name" time="0.033" />
+    </testsuite>
+</testsuites>

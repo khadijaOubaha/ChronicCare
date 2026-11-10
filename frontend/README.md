@@ -1,16 +1,20 @@
-# React + Vite
+# ChronicCare — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+## Démarrage
+```bash
+npm install
+npm run dev        # http://localhost:5173
+```
+Services requis : Auth (8000), Patients (8001), Treatments (8002). Le proxy de `vite.config.js`
+route `/api/v1/*` vers le bon service (`AUTH_URL`, `PATIENTS_URL`, `TREATMENTS_URL`).
 
-Currently, two official plugins are available:
+## Pages
+- Patient : tableau de bord `/`, suivi des traitements `/suivi`
+- Médecin : tableau de bord `/`, patients `/patients`, prescriptions `/prescriptions`
+- Commun : téléconsultations `/teleconsultations` (page « bientôt disponible », pas de backend)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Structure
+- `src/api/` client HTTP unique + un module par service
+- `src/auth/` session, jeton, routes protégées, rôles
+- `src/features/` formulaires et cartes métier (patients, traitements)
+- `src/components/ui/` composants réutilisables · `src/layouts/` · `src/pages/` · `src/hooks/` · `src/utils/`

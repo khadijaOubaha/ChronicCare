@@ -45,6 +45,7 @@ services:
       postgres:
         condition: service_healthy
   
+
   
   auth-service:
     build:
@@ -78,6 +79,26 @@ services:
       postgres:
         condition: service_healthy
       patients-service:
+        condition: service_started
+ 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chroniccare-frontend
+    restart: unless-stopped
+    environment:
+      AUTH_URL: "http://auth-service:8000"
+      PATIENTS_URL: "http://patients-service:8001"
+      TREATMENTS_URL: "http://treatments-service:8002"
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      auth-service:
+        condition: service_started
+      patients-service:
+        condition: service_started
+      treatments-service:
         condition: service_started
 
 
