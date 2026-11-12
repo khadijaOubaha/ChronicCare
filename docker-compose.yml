@@ -32,6 +32,25 @@ services:
       postgres:
         condition: service_healthy
     
+
+  mesures-service:
+    build:
+      context: ./services/mesures-service
+      dockerfile: Dockerfile
+    container_name: chroniccare-mesures
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:${MESURES_PORT:-8002}:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+
+
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: chroniccare-pgadmin

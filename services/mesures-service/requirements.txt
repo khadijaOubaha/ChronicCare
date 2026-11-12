@@ -4,3 +4,6 @@ sqlalchemy
 psycopg[binary]
 alembic
 pydantic[email]
+httpx
+python-dotenv
+tzdata

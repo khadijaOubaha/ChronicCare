@@ -1,7 +1,15 @@
+
 import os
 
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
+# Charger le fichier .env situé à la racine du projet
+ROOT_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../..")
+)
+load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
