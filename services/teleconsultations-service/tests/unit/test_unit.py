@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base
 from app.models import Teleconsultation
 from app.routers.teleconsultations import ALLOWED_TRANSITIONS, TERMINAL_STATUSES
-from app.security import CurrentUser, get_current_user, require_admin
+from app.security import CurrentUser, get_current_user, require_admin, require_patient
 from tests.conftest import make_token
 
 
@@ -20,7 +20,8 @@ def creds(token):
 
 
 def test_status_transitions_rules():
-    """Seul SCHEDULED évolue ; COMPLETED et CANCELLED sont finaux."""
+    """REQUESTED et SCHEDULED évoluent ; COMPLETED et CANCELLED sont finaux."""
+    assert ALLOWED_TRANSITIONS["REQUESTED"] == {"SCHEDULED", "CANCELLED"}
     assert ALLOWED_TRANSITIONS["SCHEDULED"] == {"COMPLETED", "CANCELLED"}
     for final in ("COMPLETED", "CANCELLED"):
         assert ALLOWED_TRANSITIONS[final] == set()
@@ -45,6 +46,22 @@ def test_table_matches_diagram_and_check_constraint():
         session.commit()
 
 
+def test_check_constraint_requires_date_unless_requested():
+    """Sans date : permis seulement pour une demande (REQUESTED) ou une demande refusée."""
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(bind=engine)
+    session = sessionmaker(bind=engine)()
+    session.add(Teleconsultation(
+        patient_id=uuid.uuid4(), doctor_id=uuid.uuid4(), status="REQUESTED",
+    ))
+    session.commit()  # demande sans date : acceptée
+    session.add(Teleconsultation(
+        patient_id=uuid.uuid4(), doctor_id=uuid.uuid4(), status="SCHEDULED",
+    ))
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
 def test_jwt_accepts_valid_token_and_rejects_others():
     """Jeton valide -> utilisateur ; absent, falsifié, expiré ou rôle inconnu -> 401."""
     user_id = uuid.uuid4()
@@ -58,4 +75,10 @@ def test_jwt_accepts_valid_token_and_rejects_others():
 def test_require_admin_refuses_patient():
     with pytest.raises(HTTPException) as exc:
         require_admin(CurrentUser(id=uuid.uuid4(), role="PATIENT"))
+    assert exc.value.status_code == 403
+
+
+def test_require_patient_refuses_admin():
+    with pytest.raises(HTTPException) as exc:
+        require_patient(CurrentUser(id=uuid.uuid4(), role="ADMIN"))
     assert exc.value.status_code == 403

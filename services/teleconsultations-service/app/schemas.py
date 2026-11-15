@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class TeleconsultationStatus(str, Enum):
+    REQUESTED = "REQUESTED"
     SCHEDULED = "SCHEDULED"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
@@ -15,6 +16,22 @@ class TeleconsultationStatus(str, Enum):
 class TeleconsultationCreate(BaseModel):
     patient_id: UUID
     doctor_id: UUID
+    scheduled_at: datetime
+    meeting_link: Optional[str] = Field(default=None, max_length=500)
+    notes: Optional[str] = Field(default=None, max_length=2000)
+
+
+class TeleconsultationRequestCreate(BaseModel):
+    """Demande faite par le patient : patient_id est imposé par le jeton."""
+
+    doctor_id: UUID
+    scheduled_at: Optional[datetime] = None  # date souhaitée (facultative)
+    notes: Optional[str] = Field(default=None, max_length=2000)  # motif
+
+
+class TeleconsultationConfirm(BaseModel):
+    """Confirmation d'une demande par le médecin."""
+
     scheduled_at: datetime
     meeting_link: Optional[str] = Field(default=None, max_length=500)
     notes: Optional[str] = Field(default=None, max_length=2000)
@@ -38,7 +55,7 @@ class TeleconsultationRead(BaseModel):
     id: UUID
     patient_id: UUID
     doctor_id: UUID
-    scheduled_at: datetime
+    scheduled_at: Optional[datetime] = None
     meeting_link: Optional[str] = None
     status: TeleconsultationStatus
     notes: Optional[str] = None

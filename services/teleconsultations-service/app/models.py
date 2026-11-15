@@ -22,15 +22,20 @@ class Teleconsultation(Base):
     __tablename__ = "teleconsultations"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('SCHEDULED','COMPLETED','CANCELLED')",
+            "status IN ('REQUESTED','SCHEDULED','COMPLETED','CANCELLED')",
             name="ck_teleconsultations_status",
+        ),
+        CheckConstraint(
+            "status IN ('REQUESTED','CANCELLED') OR scheduled_at IS NOT NULL",
+            name="ck_teleconsultations_date_required",
         ),
     )
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     patient_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
     doctor_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
-    scheduled_at = Column(DateTime, nullable=False, index=True)
+    # NULL possible uniquement pour une demande (REQUESTED), ou refusée (CANCELLED), sans date.
+    scheduled_at = Column(DateTime, nullable=True, index=True)
     meeting_link = Column(String(500), nullable=True)
     status = Column(String(20), nullable=False, default="SCHEDULED", index=True)
     notes = Column(Text, nullable=True)

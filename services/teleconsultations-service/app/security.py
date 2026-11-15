@@ -76,3 +76,13 @@ def require_admin(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
             detail="Action réservée au médecin (rôle ADMIN)",
         )
     return user
+
+
+def require_patient(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+    """Réserve la route au patient (rôle PATIENT)."""
+    if user.role != ROLE_PATIENT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Action réservée au patient (rôle PATIENT)",
+        )
+    return user

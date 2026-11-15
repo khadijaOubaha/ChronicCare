@@ -8,11 +8,19 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Teleconsultation, utcnow
-from app.security import ROLE_PATIENT, CurrentUser, get_current_user, require_admin
+from app.security import (
+    ROLE_PATIENT,
+    CurrentUser,
+    get_current_user,
+    require_admin,
+    require_patient,
+)
 from app.schemas import (
+    TeleconsultationConfirm,
     TeleconsultationCreate,
     TeleconsultationList,
     TeleconsultationRead,
+    TeleconsultationRequestCreate,
     TeleconsultationStatus,
     TeleconsultationStatusUpdate,
     TeleconsultationUpdate,
@@ -22,6 +30,8 @@ router = APIRouter(prefix="/api/v1/teleconsultations", tags=["teleconsultations"
 
 # Transitions de statut autorisées
 ALLOWED_TRANSITIONS = {
+    # Demande du patient : confirmée (-> SCHEDULED, via /confirm) ou refusée.
+    "REQUESTED": {"SCHEDULED", "CANCELLED"},
     "SCHEDULED": {"COMPLETED", "CANCELLED"},
     "COMPLETED": set(),
     "CANCELLED": set(),
@@ -52,7 +62,8 @@ def ensure_slot_free(
 ) -> None:
     """Refuse deux consultations au même instant pour le même médecin ou patient."""
     query = select(Teleconsultation.id).where(
-        Teleconsultation.status != "CANCELLED",
+        # Une demande (REQUESTED) ou une annulation ne bloque pas le créneau.
+        Teleconsultation.status.in_(("SCHEDULED", "COMPLETED")),
         Teleconsultation.scheduled_at == when,
         or_(
             Teleconsultation.doctor_id == doctor_id,
@@ -86,6 +97,38 @@ def create_teleconsultation(payload: TeleconsultationCreate, db: Session = Depen
         scheduled_at=when,
         meeting_link=payload.meeting_link,
         status="SCHEDULED",
+        notes=payload.notes,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.post(
+    "/requests",
+    response_model=TeleconsultationRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def request_teleconsultation(
+    payload: TeleconsultationRequestCreate,
+    db: Session = Depends(get_db),
+    user: CurrentUser = Depends(require_patient),
+):
+    """Le patient demande une téléconsultation (statut REQUESTED).
+
+    patient_id est imposé par le jeton ; la demande ne bloque aucun créneau.
+    """
+    when = None
+    if payload.scheduled_at is not None:
+        when = to_naive_utc(payload.scheduled_at)
+        if when <= utcnow():
+            raise HTTPException(status_code=400, detail="La date doit être dans le futur")
+    item = Teleconsultation(
+        patient_id=user.id,
+        doctor_id=payload.doctor_id,
+        scheduled_at=when,
+        status="REQUESTED",
         notes=payload.notes,
     )
     db.add(item)
@@ -170,6 +213,21 @@ def update_teleconsultation(
 
     data = payload.model_dump(exclude_unset=True)
 
+    if item.status == "REQUESTED":
+        # Une demande se traite par /confirm (date) ou par un refus ; seules les
+        # notes et le lien peuvent être ajustés ici.
+        if set(data) - {"notes", "meeting_link"}:
+            raise HTTPException(
+                status_code=409,
+                detail="Une demande se confirme via /confirm : seules les notes et le lien sont modifiables",
+            )
+        for field in ("meeting_link", "notes"):
+            if field in data:
+                setattr(item, field, data[field])
+        db.commit()
+        db.refresh(item)
+        return item
+
     if item.status == "COMPLETED":
         # Terminée : seul le compte rendu (notes) reste modifiable.
         if set(data) - {"notes"}:
@@ -204,6 +262,38 @@ def update_teleconsultation(
 
 
 @router.patch(
+    "/{teleconsultation_id}/confirm",
+    response_model=TeleconsultationRead,
+    dependencies=[Depends(require_admin)],
+)
+def confirm_request(
+    teleconsultation_id: UUID,
+    payload: TeleconsultationConfirm,
+    db: Session = Depends(get_db),
+):
+    """Le médecin confirme une demande : REQUESTED -> SCHEDULED (date et lien)."""
+    item = get_or_404(db, teleconsultation_id)
+    if item.status != "REQUESTED":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Transition interdite : {item.status} -> SCHEDULED",
+        )
+    when = to_naive_utc(payload.scheduled_at)
+    if when <= utcnow():
+        raise HTTPException(status_code=400, detail="La date doit être dans le futur")
+    ensure_slot_free(db, item.doctor_id, item.patient_id, when, exclude_id=item.id)
+
+    item.scheduled_at = when
+    item.meeting_link = payload.meeting_link
+    if payload.notes is not None:
+        item.notes = payload.notes
+    item.status = "SCHEDULED"
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.patch(
     "/{teleconsultation_id}/status",
     response_model=TeleconsultationRead,
     dependencies=[Depends(require_admin)],
@@ -215,6 +305,11 @@ def change_status(
 ):
     item = get_or_404(db, teleconsultation_id)
     new_status = payload.status.value
+    if item.status == "REQUESTED" and new_status == "SCHEDULED":
+        raise HTTPException(
+            status_code=409,
+            detail="Pour confirmer une demande, utilisez /confirm (date obligatoire)",
+        )
     if new_status not in ALLOWED_TRANSITIONS[item.status]:
         raise HTTPException(
             status_code=409,
