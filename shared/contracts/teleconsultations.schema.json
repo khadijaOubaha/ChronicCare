@@ -1,0 +1,89 @@
+
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TeleconsultationUpdatedEvent",
+  "description": "SchÃ©ma de l'Ã©vÃ©nement associÃ© Ã  la crÃ©ation, la modification, la confirmation, l'annulation ou la finalisation d'une tÃ©lÃ©consultation dans Teleconsultations Service.",
+  "type": "object",
+  "required": [
+    "event_type",
+    "patient_id",
+    "data"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "const": "teleconsultation.updated",
+      "description": "Nom de l'Ã©vÃ©nement sensible Ã  la casse (obligatoire)"
+    },
+    "patient_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identifiant UUID du patient concernÃ© (obligatoire)"
+    },
+    "doctor_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Identifiant UUID du mÃ©decin responsable de la tÃ©lÃ©consultation (optionnel)"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Horodatage ISO 8601 en UTC (optionnel mais recommandÃ©)"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "teleconsultation_id",
+        "action",
+        "status"
+      ],
+      "properties": {
+        "teleconsultation_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Identifiant UUID de la tÃ©lÃ©consultation"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "created",
+            "requested",
+            "confirmed",
+            "updated",
+            "completed",
+            "cancelled",
+            "deleted"
+          ],
+          "description": "Action effectuÃ©e sur la tÃ©lÃ©consultation"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "REQUESTED",
+            "SCHEDULED",
+            "COMPLETED",
+            "CANCELLED"
+          ],
+          "description": "Statut actuel de la tÃ©lÃ©consultation"
+        },
+        "scheduled_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Date et heure prÃ©vues pour la tÃ©lÃ©consultation (peut Ãªtre null)"
+        },
+        "meeting_link": {
+          "type": ["string", "null"],
+          "maxLength": 500,
+          "description": "Lien de la rÃ©union vidÃ©o (optionnel)"
+        },
+        "notes": {
+          "type": ["string", "null"],
+          "maxLength": 2000,
+          "description": "Notes associÃ©es Ã  la tÃ©lÃ©consultation (optionnel)"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
