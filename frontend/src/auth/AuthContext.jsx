@@ -28,6 +28,16 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onExpired);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const me = await authApi.me();
+      setUser(me);
+      return me;
+    } catch {
+      return null;
+    }
+  }, []);
+
   // expectedRole : rôle choisi sur l'onglet Patient/Médecin. Le backend ne reçoit pas
   // ce choix : on le compare au rôle réel renvoyé par /me.
   const login = useCallback(async ({ email, password, remember, expectedRole }) => {
@@ -55,8 +65,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, isAuthenticated: Boolean(user), login, logout }),
-    [user, loading, login, logout]
+    () => ({ user, loading, isAuthenticated: Boolean(user), login, logout, refreshUser }),
+    [user, loading, login, logout, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

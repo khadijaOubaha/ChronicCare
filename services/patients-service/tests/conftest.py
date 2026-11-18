@@ -1,13 +1,13 @@
 import uuid
-
-from sqlalchemy import create_engine, text
 import os
 from pathlib import Path
 from urllib.parse import quote_plus
 
+import jwt
 import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, text
 
 # Charger le fichier .env à la racine de ChronicCare
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -24,17 +24,54 @@ DATABASE_URL = (
     f"@127.0.0.1:{port}/{database}"
 )
 
-# Configurer les variables avant l'import de l'application
+# Clé JWT de test – on force l'override pour que les tokens de test
+# soient toujours signés et vérifiés avec la même clé, indépendamment
+# de ce que contient le fichier .env.
+JWT_SECRET_KEY = "test-secret-key-chroniccare-only"
 os.environ["DATABASE_URL"] = DATABASE_URL
+os.environ["JWT_SECRET_KEY"] = JWT_SECRET_KEY  # force override (setdefault ne suffit pas)
 
-from app.main import app
+from app.main import app  # noqa: E402
+
+test_engine = create_engine(DATABASE_URL)
+
+
+def make_token(role: str = "ADMIN") -> str:
+    """Génère un JWT de test pour simuler l'authentification."""
+    import time
+    payload = {
+        "sub": str(uuid.uuid4()),
+        "role": role,
+        "iat": int(time.time()),
+        "exp": int(time.time()) + 3600,
+    }
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
+
+
+@pytest.fixture
+def admin_token():
+    return make_token("ADMIN")
+
+
+@pytest.fixture
+def patient_token():
+    return make_token("PATIENT")
+
+
+@pytest.fixture
+def admin_headers(admin_token):
+    return {"Authorization": f"Bearer {admin_token}"}
+
+
+@pytest.fixture
+def patient_headers(patient_token):
+    return {"Authorization": f"Bearer {patient_token}"}
 
 
 @pytest.fixture
 def client():
     with TestClient(app) as test_client:
         yield test_client
-test_engine = create_engine(DATABASE_URL)
 
 
 @pytest.fixture

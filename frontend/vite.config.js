@@ -7,6 +7,7 @@ const AUTH = process.env.AUTH_URL || "http://localhost:8000";
 const PATIENTS = process.env.PATIENTS_URL || "http://localhost:8001";
 const TREATMENTS = process.env.TREATMENTS_URL || "http://localhost:8002";
 
+
 export default defineConfig({
   plugins: [react()],
   server: {

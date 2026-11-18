@@ -1,28 +1,10 @@
-﻿
 import uuid
 from datetime import date, datetime, timezone
 
-from sqlalchemy import (
-    Boolean,
-    Date,
-    DateTime,
-    ForeignKey,
-    String,
-    Table,
-    Uuid,
-)
+from sqlalchemy import Boolean, Date, DateTime, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database import Base, engine
-
-
-# Charger la structure réelle de la table users
-# pour résoudre la clé étrangère patients.user_id
-users_table = Table(
-    "users",
-    Base.metadata,
-    autoload_with=engine,
-)
+from app.database import Base
 
 
 class Patient(Base):
@@ -34,11 +16,13 @@ class Patient(Base):
         default=uuid.uuid4,
     )
 
+    # user_id est l'identifiant du compte dans auth-service.
+    # On le stocke en UUID simple sans contrainte FK pour découpler les services.
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
         unique=True,
         nullable=True,
+        index=True,
     )
 
     first_name: Mapped[str] = mapped_column(
@@ -69,11 +53,19 @@ class Patient(Base):
     email: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
+        index=True,
     )
 
     address: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True,
+    )
+
+    # Pathologie principale associée au patient
+    disease: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        index=True,
     )
 
     is_active: Mapped[bool] = mapped_column(

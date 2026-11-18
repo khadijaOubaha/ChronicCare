@@ -56,7 +56,7 @@ class TreatmentRead(BaseModel):
     id: UUID
     patient_id: UUID
     prescribed_by: UUID
-    disease: Disease
+    disease: Disease | None = None  # None toléré pour les anciens enregistrements
     medication_name: str
     dosage: str
     frequency: str

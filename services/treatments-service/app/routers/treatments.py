@@ -1,4 +1,3 @@
-
 import os
 from typing import Annotated
 from uuid import UUID
@@ -69,6 +68,40 @@ def verify_patient(patient_id: UUID) -> None:
         )
 
 
+def get_patient_id_for_user(
+    user_id: UUID,
+    token: str | None = None,
+    db: Session | None = None,
+) -> UUID | None:
+    """Recupere l'ID du patient associe a un user_id via Patients Service ou repli base locale."""
+    if token:
+        try:
+            resp = httpx.get(
+                f"{PATIENTS_SERVICE_URL}/api/v1/patients/me",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=3.0,
+            )
+            if resp.status_code == 200:
+                p_data = resp.json()
+                if p_data and "id" in p_data:
+                    return UUID(str(p_data["id"]))
+        except Exception:
+            pass
+
+    if db is not None:
+        try:
+            res = db.execute(
+                text("SELECT id FROM patients WHERE user_id = :user_id"),
+                {"user_id": str(user_id)},
+            ).scalar_one_or_none()
+            if res:
+                return UUID(str(res))
+        except Exception:
+            pass
+
+    return None
+
+
 @router.post(
     "/treatments",
     response_model=TreatmentRead,
@@ -99,12 +132,11 @@ def get_my_treatments(
     current_user: AuthenticatedUser,
 ):
     if current_user.role == "PATIENT":
-        # The shared database currently stores the link between
-        # Auth users and Patients records in patients.user_id.
-        patient_id = db.execute(
-            text("SELECT id FROM patients WHERE user_id = :user_id"),
-            {"user_id": str(current_user.id)},
-        ).scalar_one_or_none()
+        patient_id = get_patient_id_for_user(
+            current_user.id,
+            token=current_user.token,
+            db=db,
+        )
 
         if patient_id is None:
             raise HTTPException(
@@ -232,19 +264,16 @@ def get_treatment(
             detail="Traitement introuvable.",
         )
 
-    if (
-        current_user.role == "PATIENT"
-        and str(treatment.patient_id)
-        != str(
-            db.execute(
-                text("SELECT id FROM patients WHERE user_id = :user_id"),
-                {"user_id": str(current_user.id)},
-            ).scalar_one_or_none()
+    if current_user.role == "PATIENT":
+        patient_id = get_patient_id_for_user(
+            current_user.id,
+            token=current_user.token,
+            db=db,
         )
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Vous ne pouvez consulter que vos propres traitements.",
-        )
+        if patient_id is None or str(treatment.patient_id) != str(patient_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous ne pouvez consulter que vos propres traitements.",
+            )
 
     return treatment

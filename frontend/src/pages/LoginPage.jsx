@@ -54,7 +54,7 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthLayout>
+    <AuthLayout role={role}>
       <h2 className="text-2xl font-bold text-brand-900">Bon retour parmi nous</h2>
       <p className="mt-1 text-sm text-slate-500">
         Veuillez saisir vos identifiants pour accéder à votre compte.
@@ -102,14 +102,12 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           error={errors.password}
           labelAside={
-            // Pas d'endpoint de réinitialisation dans le service Auth : lien inactif.
-            <span
-              aria-disabled="true"
-              title="Bientôt disponible"
-              className="cursor-not-allowed text-xs font-semibold text-slate-400"
+            <Link
+              to="/forgot-password"
+              className="text-xs font-semibold text-brand-600 hover:text-brand-700"
             >
               Mot de passe oublié ?
-            </span>
+            </Link>
           }
         />
 
