@@ -1,9 +1,11 @@
+from datetime import datetime, timezone
+import logging
 import os
 from typing import Annotated
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
@@ -26,6 +28,73 @@ PATIENTS_SERVICE_URL = os.getenv(
     "PATIENTS_SERVICE_URL",
     "http://patients-service:8001",
 )
+
+REMINDERS_SERVICE_URL = os.getenv(
+    "REMINDERS_SERVICE_URL",
+    "http://reminders-service:8004",
+)
+
+REMINDERS_EVENT_ENDPOINT = os.getenv(
+    "REMINDERS_EVENT_ENDPOINT",
+    "/api/v1/events",
+)
+
+logger = logging.getLogger("treatments.events")
+
+
+def emit_treatment_event(
+    action: str,  # "created" | "updated" | "stopped"
+    treatment: Treatment,
+    token: str | None = None,
+) -> None:
+    """Envoie un événement inter-service à Reminders Service selon le contrat exact :
+
+    POST http://reminders-service:8004/api/v1/events
+    {
+      "event_type": "treatment.updated",
+      "patient_id": "<uuid>",
+      "doctor_id": "<uuid>",
+      "occurred_at": "<iso8601>",
+      "data": {
+        "treatment_id": "<uuid>",
+        "action": "created" | "updated" | "stopped",
+        "medication_name": "<str>",
+        "dosage": "<str>"
+      }
+    }
+    """
+    if not REMINDERS_SERVICE_URL:
+        return
+
+    payload = {
+        "event_type": "treatment.updated",
+        "patient_id": str(treatment.patient_id),
+        "doctor_id": str(treatment.prescribed_by) if treatment.prescribed_by else None,
+        "occurred_at": datetime.now(timezone.utc).isoformat(),
+        "data": {
+            "treatment_id": str(treatment.id),
+            "action": action,  # "created", "updated" ou "stopped"
+            "medication_name": treatment.medication_name,
+            "dosage": treatment.dosage,
+        },
+    }
+
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    url = f"{REMINDERS_SERVICE_URL}{REMINDERS_EVENT_ENDPOINT}"
+
+    try:
+        with httpx.Client(timeout=3.0) as client:
+            resp = client.post(url, json=payload, headers=headers)
+            if resp.status_code not in (200, 201, 202, 204):
+                logger.warning(
+                    f"Reminders Service a répondu {resp.status_code} pour treatment.updated ({action})"
+                )
+    except Exception as exc:
+        # Résilience : ne bloque jamais le médecin si Reminders Service est temporairement indisponible
+        logger.warning(f"Impossible de notifier Reminders Service ({url}): {exc}")
 
 
 def verify_patient(patient_id: UUID) -> None:
@@ -111,6 +180,7 @@ def create_treatment(
     payload: TreatmentCreate,
     db: DbSession,
     current_user: AdminUser,
+    background_tasks: BackgroundTasks,
 ):
     verify_patient(payload.patient_id)
 
@@ -123,6 +193,15 @@ def create_treatment(
     db.add(treatment)
     db.commit()
     db.refresh(treatment)
+
+    # Notifie le service Rappels de la création du traitement
+    background_tasks.add_task(
+        emit_treatment_event,
+        action="created",
+        treatment=treatment,
+        token=current_user.token,
+    )
+
     return treatment
 
 
@@ -185,6 +264,7 @@ def stop_treatment(
     treatment_id: UUID,
     db: DbSession,
     current_user: AdminUser,
+    background_tasks: BackgroundTasks,
 ):
     treatment = db.get(Treatment, treatment_id)
 
@@ -203,6 +283,15 @@ def stop_treatment(
     treatment.status = TreatmentStatus.STOPPED
     db.commit()
     db.refresh(treatment)
+
+    # Notifie le service Rappels de l'arrêt du traitement (action="stopped")
+    background_tasks.add_task(
+        emit_treatment_event,
+        action="stopped",
+        treatment=treatment,
+        token=current_user.token,
+    )
+
     return treatment
 
 
@@ -215,6 +304,7 @@ def update_treatment(
     payload: TreatmentUpdate,
     db: DbSession,
     current_user: AdminUser,
+    background_tasks: BackgroundTasks,
 ):
     treatment = db.get(Treatment, treatment_id)
 
@@ -247,6 +337,15 @@ def update_treatment(
 
     db.commit()
     db.refresh(treatment)
+
+    # Notifie le service Rappels de la modification du traitement (action="updated")
+    background_tasks.add_task(
+        emit_treatment_event,
+        action="updated",
+        treatment=treatment,
+        token=current_user.token,
+    )
+
     return treatment
 
 
