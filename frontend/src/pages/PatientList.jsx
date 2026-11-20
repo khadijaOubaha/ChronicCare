@@ -2,7 +2,8 @@ import { Calendar, FileText, Plus, Search, Video } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import { useAuth } from "../auth";
+import { useAuth } from "../auth/AuthContext";
+import { tokenStorage } from "../auth/tokenStorage";
 import { JoinButton, TeleRow } from "../components/Common";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
@@ -18,7 +19,8 @@ export const doctorWho = (t) => {
 };
 
 export default function PatientList() {
-  const { token } = useAuth();
+  const { user, loading } = useAuth();
+  const token = tokenStorage.get();
   const now = useNow();
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
@@ -36,10 +38,12 @@ export default function PatientList() {
   }, [token]);
 
   useEffect(() => {
+    if (loading || !token || !user?.id) return;
+
     load();
     const id = setInterval(load, 60000);
     return () => clearInterval(id);
-  }, [load]);
+  }, [loading, token, user?.id, load]);
 
   const { upcoming, history, nextOne, monthCount, reports } = useMemo(() => {
     const all = items || [];

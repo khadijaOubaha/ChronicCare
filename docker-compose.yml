@@ -24,14 +24,32 @@ services:
       dockerfile: Dockerfile
     container_name: chroniccare-patients
     restart: unless-stopped
+    entrypoint: []
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY doit être définie dans .env}
+      AUTH_SERVICE_URL: "http://auth-service:8000"
     ports:
       - "127.0.0.1:${PATIENTS_PORT:-8001}:8001"
     depends_on:
       postgres:
         condition: service_healthy
-    
+
+  mesures-service:
+    build:
+      context: ./services/mesures-service
+      dockerfile: Dockerfile
+    container_name: chroniccare-mesures
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:${MESURES_PORT:-8003}:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: chroniccare-pgadmin
@@ -47,6 +65,64 @@ services:
       postgres:
         condition: service_healthy
 
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: chroniccare-auth
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY doit être définie dans .env}
+      PATIENTS_SERVICE_URL: "http://patients-service:8001"
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  treatments-service:
+    build:
+      context: ./services/treatments-service
+      dockerfile: Dockerfile
+    container_name: chroniccare-treatments
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY doit être définie dans .env}
+      PATIENTS_SERVICE_URL: "http://patients-service:8001"
+      REMINDERS_SERVICE_URL: "http://reminders-service:8004"
+    ports:
+      - "127.0.0.1:${TREATMENTS_PORT:-8002}:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      patients-service:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chroniccare-frontend
+    restart: unless-stopped
+    environment:
+      AUTH_URL: "http://auth-service:8000"
+      PATIENTS_URL: "http://patients-service:8001"
+      TREATMENTS_URL: "http://treatments-service:8002"
+      MESURES_URL: "http://mesures-service:8003"
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      auth-service:
+        condition: service_started
+      patients-service:
+        condition: service_started
+      treatments-service:
+        condition: service_started
+      mesures-service:
+        condition: service_started
+
   teleconsultations-service:
     build:
       context: ./services/teleconsultations-service
@@ -55,13 +131,14 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY doit être définie dans .env}
+      JWT_ALGORITHM: HS256
     ports:
       - "127.0.0.1:${TELECONSULTATIONS_PORT:-8005}:8005"
     depends_on:
       postgres:
         condition: service_healthy
-        
+
 volumes:
   chroniccare_postgres_data:
   chroniccare_pgadmin_data:

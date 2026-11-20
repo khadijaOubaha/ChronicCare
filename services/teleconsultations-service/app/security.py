@@ -1,7 +1,7 @@
 """Authentification JWT et contrôle des rôles.
 
 Le jeton est émis par le service d'authentification. Le Teleconsultations
-Service ne fait que le vérifier avec le secret partagé (variable JWT_SECRET).
+Service ne fait que le vérifier avec le secret partagé (variable JWT_SECRET_KEY).
 
 Format attendu du jeton (à ajuster si le service d'authentification diffère) :
   - sub  : UUID de l'utilisateur
@@ -43,11 +43,11 @@ def get_current_user(
     if credentials is None:
         raise _unauthorized("Authentification requise")
 
-    secret = os.getenv("JWT_SECRET")
+    secret = os.getenv("JWT_SECRET_KEY")
     if not secret:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="JWT_SECRET n'est pas configuré",
+            detail="JWT_SECRET_KEY n'est pas configuré",
         )
     algorithm = os.getenv("JWT_ALGORITHM", "HS256")
 

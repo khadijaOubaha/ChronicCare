@@ -2,7 +2,8 @@ import { ArrowLeft, CalendarClock, CheckCircle2, Send, Star } from "lucide-react
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
-import { useAuth } from "../auth";
+import { useAuth } from "../auth/AuthContext";
+import { tokenStorage } from "../auth/tokenStorage";
 import { Avatar } from "../components/Common";
 import Alert from "../components/ui/Alert";
 import Button from "../components/ui/Button";
@@ -14,7 +15,8 @@ import { DOCTORS } from "../data/doctors";
 import { localInputToIso } from "../lib/tele";
 
 export default function RequestPage() {
-  const { token } = useAuth();
+  const { user, loading } = useAuth();
+  const token = tokenStorage.get();
   const navigate = useNavigate();
   const [doctorId, setDoctorId] = useState(DOCTORS[0].id);
   const [notes, setNotes] = useState("");
@@ -24,6 +26,10 @@ export default function RequestPage() {
   const [sent, setSent] = useState(false);
 
   async function submit() {
+    if (loading || !token || !user?.id) {
+      setError("Votre session n'est pas encore prête. Veuillez réessayer.");
+      return;
+    }
     setError("");
     if (!notes.trim()) return setError("Indiquez le motif de la consultation.");
     setBusy(true);

@@ -1,7 +1,8 @@
 import { Ban, Check, Pencil, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
-import { useAuth } from "../auth";
+import { useAuth } from "../auth/AuthContext";
+import { tokenStorage } from "../auth/tokenStorage";
 import { IconButton, JoinButton, TeleRow, Toast } from "../components/Common";
 import Alert from "../components/ui/Alert";
 import Button from "../components/ui/Button";
@@ -93,7 +94,8 @@ function ConsultModal({ mode, item, patients, onClose, onSubmit }) {
 }
 
 export default function DoctorList() {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
+  const token = tokenStorage.get();
   const now = useNow();
   const [items, setItems] = useState(null);
   const [patients, setPatients] = useState([]);

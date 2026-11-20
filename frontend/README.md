@@ -1,36 +1,88 @@
-# ChronicCare — Frontend (Téléconsultations)
+# ChronicCare — Frontend
 
-React + Vite + Tailwind (même design system que le frontend principal : palette `brand`, Inter / JetBrains Mono, composants `src/components/ui`). Écrans : liste patient, demande de rendez-vous, détails du rendez-vous,
-liste médecin (demandes, planification, confirmation, fin, annulation, compte rendu).
+Application frontend de ChronicCare construite avec React, Vite et Tailwind CSS.
 
-## Lancer (PowerShell)
+## Démarrage
 
-    # 1. Backend (depuis la racine du projet ; JWT_SECRET doit être renseigné dans .env)
-    docker compose up -d --build
+Depuis la racine du projet :
 
-    # 2. Frontend
-    cd frontend
-    $env:JWT_SECRET = "<même valeur que dans .env>"
-    npm install
-    npm run dev:fake        # http://localhost:3000
+```bash
+docker compose up -d --build
+```
 
-`dev:fake` ajoute une **connexion de test** (le serveur de développement signe un jeton avec
-`JWT_SECRET`, en attendant le service d'authentification). Ne sert qu'au développement.
+Puis, dans le dossier `frontend` :
 
-Comptes de test (mot de passe libre) :
-- Médecin : `medecin@test.com` (Dr. Ahlam El Fadli), `sarah.martin@test.com`,
-  `jean.dupont@test.com`, `marie.lefevre@test.com`
-- Patient : `<uuid-du-patient>@test.com` ou n'importe quel autre e-mail
+```bash
+npm install
+npm run dev
+```
 
-## Règles d'interface
+Le frontend est accessible à l'adresse indiquée par Vite (généralement `http://localhost:5173`).
 
-- **Salle** : le lien saisi par le médecin est utilisé ; sinon `https://meet.jit.si/ChronicCare-<id>`
-  est calculé (aucun changement de backend).
-- **« Rejoindre »** : actif de 10 min avant l'heure jusqu'à la fin (durée fixe de 30 min) ;
-  le badge « En direct » apparaît pendant la consultation.
-- **Demande du patient** : `POST /api/v1/teleconsultations/requests` (statut `REQUESTED`) ;
-  le médecin confirme (`PATCH /{id}/confirm`) ou refuse.
-- `src/data/doctors.js` : annuaire de développement (spécialité, note, cabinet). Le service ne
-  stocke que `doctor_id` ; à remplacer par une API quand elle existera.
-- Liste des patients (formulaire « Planifier ») : lue sur le Patients Service (port 8001) ;
-  à défaut, saisie de l'UUID.
+## Services backend
+
+Le frontend communique avec les services suivants :
+
+- Auth : port 8000
+- Patients : port 8001
+- Treatments : port 8002
+- Teleconsultations : port 8004
+
+Les URL des services sont configurées dans `vite.config.js`.
+
+**Sécurité :** les secrets JWT doivent rester dans le fichier `.env` à la racine du projet. Ne place jamais `JWT_SECRET_KEY` dans le code frontend ni dans une variable `VITE_*`.
+
+## Fonctionnalités
+
+### Espace patient
+- Tableau de bord
+- Suivi des traitements
+- Consultation des informations médicales
+- Demande de téléconsultation
+- Consultation des rendez-vous
+
+### Espace médecin
+- Tableau de bord
+- Gestion des patients
+- Gestion des prescriptions
+- Consultation des demandes de téléconsultation
+- Planification et suivi des rendez-vous
+
+### Fonctionnalités communes
+- Authentification
+- Gestion des rôles et des accès
+- Profil utilisateur
+- Téléconsultations
+
+## Téléconsultations
+
+Les écrans de téléconsultation comprennent :
+
+- Liste des rendez-vous côté patient
+- Demande de rendez-vous
+- Détails d'une téléconsultation
+- Liste des demandes côté médecin
+- Planification, confirmation et annulation
+- Compte rendu de consultation
+
+Le frontend communique avec le Teleconsultations Service via `/api/v1/teleconsultations`.
+
+## Structure du projet
+
+- `src/api/` : clients HTTP et communication avec les services
+- `src/auth/` : authentification, gestion des jetons et rôles
+- `src/components/` : composants réutilisables
+- `src/features/` : fonctionnalités métier
+- `src/layouts/` : mises en page
+- `src/pages/` : pages de l'application
+- `src/hooks/` : hooks React
+- `src/utils/` : fonctions utilitaires
+
+## Technologies
+
+- React
+- Vite
+- React Router
+- Tailwind CSS
+- Axios
+- Lucide React

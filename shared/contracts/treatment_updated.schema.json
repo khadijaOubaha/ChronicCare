@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TreatmentUpdatedEvent",
+  "description": "Schéma officiel de l'événement émis par Treatments Service vers Reminders Service lors de la création, modification ou arrêt d'un traitement.",
+  "type": "object",
+  "required": ["event_type", "patient_id", "data"],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "const": "treatment.updated",
+      "description": "Nom de l'événement sensible à la casse (obligatoire)"
+    },
+    "patient_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identifiant UUID du patient concerné (obligatoire)"
+    },
+    "doctor_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Identifiant UUID du médecin prescripteur (optionnel)"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Horodatage ISO 8601 en UTC (optionnel mais recommandé)"
+    },
+    "data": {
+      "type": "object",
+      "required": ["treatment_id", "action", "medication_name", "dosage"],
+      "properties": {
+        "treatment_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Identifiant UUID du traitement"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["created", "updated", "stopped"],
+          "description": "Action effectuée : 'created', 'updated' ou 'stopped'"
+        },
+        "medication_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Nom du médicament"
+        },
+        "dosage": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Posologie / Dosage (ex: 500 mg)"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

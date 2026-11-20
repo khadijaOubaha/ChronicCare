@@ -1,6 +1,7 @@
-﻿from datetime import date, datetime
-from uuid import UUID
+
+from datetime import date, datetime
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -11,8 +12,10 @@ class PatientCreate(BaseModel):
     date_of_birth: date | None = None
     sex: Literal["F", "M", "OTHER"] | None = None
     phone: str | None = Field(default=None, max_length=30)
-    email: EmailStr | None = None
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
     address: str | None = Field(default=None, max_length=500)
+    disease: Literal["TYPE_2_DIABETES", "HYPERTENSION"]
 
 
 class PatientUpdate(BaseModel):
@@ -23,6 +26,7 @@ class PatientUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=30)
     email: EmailStr | None = None
     address: str | None = Field(default=None, max_length=500)
+    disease: Literal["TYPE_2_DIABETES", "HYPERTENSION"] | None = None
     is_active: bool | None = None
 
 
@@ -30,6 +34,7 @@ class PatientRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    user_id: UUID | None = None
     first_name: str
     last_name: str
     date_of_birth: date | None
@@ -37,6 +42,14 @@ class PatientRead(BaseModel):
     phone: str | None
     email: str | None
     address: str | None
+    disease: str | None
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+
+class PatientListResponse(BaseModel):
+    items: list[PatientRead]
+    total: int
+    offset: int
+    limit: int

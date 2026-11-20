@@ -1,3 +1,4 @@
+
 import { Activity } from "lucide-react";
 
 export default function Logo({ dark = false }) {
