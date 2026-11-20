@@ -173,8 +173,9 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
       },
 
+      // Téléconsultations : communication entre conteneurs Docker.
       "/api/v1/teleconsultations": {
-        target: "http://localhost:8005",
+        target: "http://teleconsultations-service:8005",
         changeOrigin: true,
       },
 
