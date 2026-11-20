@@ -1,3 +1,4 @@
+
 import { getErrorMessage } from "../../utils/errors";
 import Alert from "./Alert";
 import Button from "./Button";
@@ -5,7 +6,10 @@ import Spinner from "./Spinner";
 
 export function LoadingState({ label = "Chargement…" }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500" role="status">
+    <div
+      className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500"
+      role="status"
+    >
       <Spinner className="h-5 w-5 text-brand-600" />
       {label}
     </div>

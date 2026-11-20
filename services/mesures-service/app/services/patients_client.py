@@ -94,7 +94,7 @@ class PatientsClient:
                 "Le service Patients a renvoyé une réponse inattendue.",
             ) from exc
 
-   
+
 
 
 def get_patients_client() -> PatientsClient:

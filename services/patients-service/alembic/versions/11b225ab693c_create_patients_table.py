@@ -1,7 +1,7 @@
 """create patients table
 
 Revision ID: 11b225ab693c
-Revises: 
+Revises:
 Create Date: 2026-11-03 19:20:27.828760
 
 """

@@ -1,7 +1,7 @@
 """create mesures tables
 
 Revision ID: cb9d5ee3e6ef
-Revises: 
+Revises:
 Create Date: 2026-11-03 20:50:12.022783
 
 """

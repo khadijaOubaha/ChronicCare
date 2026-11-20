@@ -57,4 +57,3 @@ class CourbeResponse(BaseModel):
     date_fin: date
     points: list[PointCourbe]  # ordre chronologique
     vide: bool  # True : aucune mesure sur la période (aucune donnée inventée)
-
