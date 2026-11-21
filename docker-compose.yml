@@ -139,7 +139,7 @@ services:
       PATIENTS_SERVICE_URL: "http://patients-service:8001"
       TREATMENTS_SERVICE_URL: "http://treatments-service:8002"
       MESURES_SERVICE_URL: "http://mesures-service:8003"
-
+      REMINDERS_SERVICE_URL: "http://reminders-service:8004"
     ports:
       - "127.0.0.1:${TELECONSULTATIONS_PORT:-8005}:8005"
     depends_on:
