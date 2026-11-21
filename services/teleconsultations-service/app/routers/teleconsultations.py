@@ -1,9 +1,12 @@
+import os
+import httpx
+
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -28,6 +31,89 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api/v1/teleconsultations", tags=["teleconsultations"])
 
+def get_patient_id_from_patients_service(user: CurrentUser) -> UUID:
+    base_url = os.getenv("PATIENTS_SERVICE_URL")
+
+    if not base_url:
+        raise HTTPException(
+            status_code=500,
+            detail="PATIENTS_SERVICE_URL n'est pas configurée.",
+        )
+
+    if not user.access_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Token utilisateur manquant.",
+        )
+
+    try:
+        response = httpx.get(
+            f"{base_url.rstrip('/')}/api/v1/patients/me",
+            headers={
+                "Authorization": f"Bearer {user.access_token}"
+            },
+            timeout=5.0,
+        )
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=504,
+            detail="Délai dépassé lors de l'appel au Patients Service.",
+        )
+    except httpx.RequestError:
+        raise HTTPException(
+            status_code=503,
+            detail="Patients Service est indisponible.",
+        )
+
+    if response.status_code == 404:
+        raise HTTPException(
+            status_code=404,
+            detail="Aucun dossier patient associé à ce compte.",
+        )
+
+    if response.status_code in (401, 403):
+        raise HTTPException(
+            status_code=response.status_code,
+            detail="Authentification refusée par Patients Service.",
+        )
+
+    if not response.is_success:
+        raise HTTPException(
+            status_code=502,
+            detail="Erreur lors de la récupération du dossier patient.",
+        )
+
+    try:
+        patient_data = response.json()
+        return UUID(str(patient_data["id"]))
+    except (ValueError, KeyError, TypeError):
+        raise HTTPException(
+            status_code=502,
+            detail="Identifiant patient invalide.",
+        )
+
+@router.get("/doctors")
+def list_doctors(
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    query = text("""
+        SELECT id, full_name
+        FROM users
+        WHERE role = 'ADMIN'
+          AND is_active = TRUE
+        ORDER BY full_name
+    """)
+
+    doctors = db.execute(query).mappings().all()
+
+    return [
+        {
+            "id": str(doctor["id"]),
+            "full_name": doctor["full_name"],
+        }
+        for doctor in doctors
+    ]
 # Transitions de statut autorisées
 ALLOWED_TRANSITIONS = {
     # Demande du patient : confirmée (-> SCHEDULED, via /confirm) ou refusée.
@@ -117,15 +203,17 @@ def request_teleconsultation(
 ):
     """Le patient demande une téléconsultation (statut REQUESTED).
 
-    patient_id est imposé par le jeton ; la demande ne bloque aucun créneau.
-    """
+    patient_id est récupéré depuis le dossier associé au compte connecté.
+    La demande ne bloque aucun créneau.    """
     when = None
     if payload.scheduled_at is not None:
         when = to_naive_utc(payload.scheduled_at)
         if when <= utcnow():
             raise HTTPException(status_code=400, detail="La date doit être dans le futur")
+    # Récupérer le véritable Patient.id
+    patient_id = get_patient_id_from_patients_service(user)
     item = Teleconsultation(
-        patient_id=user.id,
+        patient_id=patient_id,
         doctor_id=payload.doctor_id,
         scheduled_at=when,
         status="REQUESTED",
@@ -150,8 +238,9 @@ def list_teleconsultations(
     user: CurrentUser = Depends(get_current_user),
 ):
     # Un patient ne voit que ses propres téléconsultations.
+    # On utilise l'identifiant de son dossier Patients, pas celui de son compte Auth.
     if user.role == ROLE_PATIENT:
-        patient_id = user.id
+        patient_id = get_patient_id_from_patients_service(user)
     filters = []
     if patient_id is not None:
         filters.append(Teleconsultation.patient_id == patient_id)
@@ -188,9 +277,17 @@ def get_teleconsultation(
     user: CurrentUser = Depends(get_current_user),
 ):
     item = get_or_404(db, teleconsultation_id)
-    # Pour un patient, la consultation d'un autre patient est introuvable (404).
-    if user.role == ROLE_PATIENT and item.patient_id != user.id:
-        raise HTTPException(status_code=404, detail="Téléconsultation introuvable")
+
+    # Vérifier l'accès avec le véritable identifiant du dossier patient.
+    if user.role == ROLE_PATIENT:
+        patient_id = get_patient_id_from_patients_service(user)
+
+        if item.patient_id != patient_id:
+            raise HTTPException(
+                status_code=404,
+                detail="Téléconsultation introuvable",
+            )
+
     return item
 
 

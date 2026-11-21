@@ -18,7 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
-  
+
 
   patients-service:
     build:
@@ -51,7 +51,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      
+
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -136,11 +136,22 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY doit être définie dans .env}
       JWT_ALGORITHM: HS256
+      PATIENTS_SERVICE_URL: "http://patients-service:8001"
+      TREATMENTS_SERVICE_URL: "http://treatments-service:8002"
+      MESURES_SERVICE_URL: "http://mesures-service:8003"
+
     ports:
       - "127.0.0.1:${TELECONSULTATIONS_PORT:-8005}:8005"
     depends_on:
       postgres:
         condition: service_healthy
+      patients-service:
+        condition: service_started
+      treatments-service:
+        condition: service_started
+      mesures-service:
+        condition: service_started
+
 
 volumes:
   chroniccare_postgres_data:
