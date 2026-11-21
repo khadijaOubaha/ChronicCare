@@ -50,10 +50,21 @@ export const api = {
   confirm: (token, id, body) => call(`${BASE}/${id}/confirm`, { method: "PATCH", body, token }),
   setStatus: (token, id, status) => call(`${BASE}/${id}/status`, { method: "PATCH", body: { status }, token }),
   remove: (token, id) => call(`${BASE}/${id}`, { method: "DELETE", token }),
+
+    // Liste dynamique des médecins depuis PostgreSQL
+  doctors: async (token) => {
+    const data = await call(`${BASE}/doctors`, { token });
+    return Array.isArray(data) ? data : [];
+  },
+
   // Patients Service (liste utilisée par le médecin pour choisir un patient)
   patients: async (token) => {
     const data = await call("/api/v1/patients?limit=100", { token });
-    return Array.isArray(data) ? data : [];
+
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.items)) return data.items;
+
+    return [];
   },
 };
 

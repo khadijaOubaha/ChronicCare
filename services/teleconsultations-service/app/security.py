@@ -8,7 +8,7 @@ Format attendu du jeton (à ajuster si le service d'authentification diffère) :
   - role : "ADMIN" (médecin) ou "PATIENT"
 """
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from uuid import UUID
 
 import jwt
@@ -26,7 +26,7 @@ bearer_scheme = HTTPBearer(auto_error=False)
 class CurrentUser:
     id: UUID
     role: str
-
+    access_token: str | None = field(default=None, repr=False)
 
 def _unauthorized(detail: str) -> HTTPException:
     return HTTPException(
@@ -65,7 +65,11 @@ def get_current_user(
     if role not in VALID_ROLES:
         raise _unauthorized("Jeton invalide : rôle inconnu")
 
-    return CurrentUser(id=user_id, role=role)
+    return CurrentUser(
+        id=user_id,
+        role=role,
+        access_token=credentials.credentials,
+    )
 
 
 def require_admin(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
