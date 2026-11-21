@@ -18,21 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
-  mesures-migrations:
-    image: python:3.12-slim
-    container_name: chroniccare-mesures-migrations
-    working_dir: /workspace/ChronicCare/services/mesures-service
-    environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    volumes:
-      - .:/workspace/ChronicCare:ro
-    command: >
-      sh -c "pip install --no-cache-dir -r requirements.txt &&
-             alembic upgrade head"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: "no"
+  
 
   patients-service:
     build:
@@ -65,8 +51,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      mesures-migrations:
-        condition: service_completed_successfully
+      
 
   pgadmin:
     image: dpage/pgadmin4:latest
