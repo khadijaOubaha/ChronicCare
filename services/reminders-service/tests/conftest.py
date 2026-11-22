@@ -1,16 +1,23 @@
+
 import pytest
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import app.models  # noqa: F401  (enregistre les tables)
+import app.models  # noqa: F401
 from app.core.database import Base, get_db
 from app.main import app
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    monkeypatch.setenv(
+        "JWT_SECRET_KEY",
+        "chroniccare-test-secret-key-32-bytes-minimum",
+    )
+
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -27,5 +34,30 @@ def client():
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
+
     yield TestClient(app)
+
     app.dependency_overrides.clear()
+    Base.metadata.drop_all(engine)
+    engine.dispose()
+
+
+@pytest.fixture
+def mock_patients_service(monkeypatch):
+    class FakeResponse:
+        status_code = 200
+
+        def __init__(self, patient_id):
+            self.patient_id = patient_id
+
+        def json(self):
+            return {"id": self.patient_id}
+
+    def fake_get(url, headers=None, timeout=None):
+        patient_id = url.rstrip("/").split("/")[-1]
+        return FakeResponse(patient_id)
+
+    monkeypatch.setattr(
+        "app.services.patient_client.httpx.get",
+        fake_get,
+    )

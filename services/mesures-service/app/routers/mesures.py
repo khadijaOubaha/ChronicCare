@@ -106,6 +106,7 @@ def read_today(
     )
 
 
+
 @router.post(
     "",
     response_model=MesureRead,
@@ -120,16 +121,25 @@ def read_today(
 )
 def create_mesure(
     payload: MesureCreate,
+    request: Request,
     patient: PatientSummary = Depends(get_patient),
     db: Session = Depends(get_db),
 ):
-    """Enregistre une mesure. La date est générée par le serveur."""
+    """Enregistre une mesure et transmet le JWT au service métier."""
+    authorization = request.headers.get("Authorization")
+    access_token = None
+
+    if authorization and authorization.startswith("Bearer "):
+        access_token = authorization.removeprefix("Bearer ").strip()
+
     return mesure_service.create_mesure(
         db,
         patient,
         payload,
         config.APP_TIMEZONE,
+        access_token=access_token,
     )
+
 
 
 @router.get(

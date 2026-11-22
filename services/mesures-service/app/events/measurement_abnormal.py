@@ -26,8 +26,7 @@ def build_measurement_abnormal_event(
         "event_id": str(uuid4()),
         "occurred_at": datetime.now(timezone.utc).isoformat(),
         "patient_id": str(patient_id),
-        "doctor_id": str(doctor_id),
-        "data": {
+        "doctor_id": str(doctor_id) if doctor_id is not None else None,        "data": {
             "patient": {
                 "full_name": patient_full_name,
                 "disease_type": disease_type,

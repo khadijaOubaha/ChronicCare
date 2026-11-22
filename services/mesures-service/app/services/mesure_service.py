@@ -1,10 +1,10 @@
-
 """Logique métier du module Mesures.
 
 Les routeurs restent minces : toutes les règles (types autorisés, une mesure
 par jour, validation, jour local...) sont ici.
 """
 
+import logging
 from datetime import date, timedelta, tzinfo
 from math import ceil
 from uuid import UUID
@@ -27,6 +27,8 @@ from app.schemas.mesure import MesureCreate, MesureRead
 from app.schemas.patient import PatientSummary
 from app.schemas.type_mesure import TypeMesureRead
 from app.services.anomaly_service import detect_anomalies
+from app.events.measurement_abnormal import build_measurement_abnormal_event
+from app.services.reminders_client import RemindersClient
 from app.services.measure_rules import (
     PRIMARY_RULE_CODE_BY_DISEASE,
     get_rule,
@@ -34,10 +36,11 @@ from app.services.measure_rules import (
 )
 from app.services.time_utils import local_date, local_today, to_local, utc_now
 
-
+logger = logging.getLogger(__name__)
 # --------------------------------------------------------------------------- #
 # Conversions base de données -> schémas de réponse
 # --------------------------------------------------------------------------- #
+
 
 def to_type_read(type_mesure: TypeMesure) -> TypeMesureRead:
     rule = get_rule(type_mesure.nom)
@@ -81,6 +84,7 @@ def to_mesure_read(
 # Types de mesures selon la maladie
 # --------------------------------------------------------------------------- #
 
+
 def get_allowed_types(
     db: Session,
     disease_type: str,
@@ -118,6 +122,7 @@ def pick_primary_type(
 # 1. Profil
 # --------------------------------------------------------------------------- #
 
+
 def get_profil(
     db: Session,
     patient: PatientSummary,
@@ -138,6 +143,7 @@ def get_profil(
 # --------------------------------------------------------------------------- #
 # 3. Mesures du jour + statuts
 # --------------------------------------------------------------------------- #
+
 
 def get_today_summary(
     db: Session,
@@ -170,8 +176,7 @@ def get_today_summary(
             CarteMesure(
                 type_mesure=to_type_read(type_mesure),
                 statut="enregistree" if mesure else "a_renseigner",
-                mesure=to_mesure_read(mesure, type_mesure, tz)
-                if mesure else None,
+                mesure=to_mesure_read(mesure, type_mesure, tz) if mesure else None,
             )
         )
 
@@ -193,6 +198,7 @@ def get_today_summary(
 # --------------------------------------------------------------------------- #
 # 4 + 5. Enregistrement d'une mesure
 # --------------------------------------------------------------------------- #
+
 
 def _already_recorded(
     db: Session,
@@ -227,6 +233,7 @@ def create_mesure(
     patient: PatientSummary,
     payload: MesureCreate,
     tz: tzinfo,
+    access_token: str | None = None,
 ) -> MesureRead:
 
     # a) Le patient doit être actif.
@@ -249,9 +256,7 @@ def create_mesure(
         )
 
     # c) Le type doit être associé à la maladie du patient.
-    allowed_ids = {
-        t.id for t in get_allowed_types(db, patient.disease_type)
-    }
+    allowed_ids = {t.id for t in get_allowed_types(db, patient.disease_type)}
 
     if type_mesure.id not in allowed_ids:
         raise DomainError(
@@ -340,6 +345,7 @@ def create_mesure(
 # 6. Historique
 # --------------------------------------------------------------------------- #
 
+
 def resolve_period(
     jours: int | None,
     date_debut: date | None,
@@ -347,9 +353,7 @@ def resolve_period(
     today: date,
 ) -> tuple[date | None, date | None]:
 
-    if jours is not None and (
-        date_debut is not None or date_fin is not None
-    ):
+    if jours is not None and (date_debut is not None or date_fin is not None):
         raise DomainError(
             400,
             "periode_invalide",
@@ -400,14 +404,7 @@ def get_history(
     if fin is not None:
         filters.append(Mesure.jour_mesure <= fin)
 
-    total = (
-        db.scalar(
-            select(func.count())
-            .select_from(Mesure)
-            .where(*filters)
-        )
-        or 0
-    )
+    total = db.scalar(select(func.count()).select_from(Mesure).where(*filters)) or 0
 
     rows = db.execute(
         select(Mesure, TypeMesure)
@@ -422,10 +419,7 @@ def get_history(
     ).all()
 
     return HistoriquePage(
-        items=[
-            to_mesure_read(m, t, tz)
-            for m, t in rows
-        ],
+        items=[to_mesure_read(m, t, tz) for m, t in rows],
         total=total,
         page=page,
         page_size=page_size,
@@ -436,6 +430,7 @@ def get_history(
 # --------------------------------------------------------------------------- #
 # 7. Données de la courbe
 # --------------------------------------------------------------------------- #
+
 
 def get_chart(
     db: Session,
