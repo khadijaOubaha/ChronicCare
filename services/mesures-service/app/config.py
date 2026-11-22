@@ -31,3 +31,11 @@ CORS_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
+REMINDERS_SERVICE_URL = os.getenv(
+    "REMINDERS_SERVICE_URL",
+    "http://reminders-service:8004",
+).rstrip("/")
+
+REMINDERS_SERVICE_TIMEOUT = float(
+    os.getenv("REMINDERS_SERVICE_TIMEOUT", "5.0")
+)
