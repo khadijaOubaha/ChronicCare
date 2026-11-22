@@ -1,18 +1,32 @@
 
-import { ArrowLeft, Camera, FileText, Mic, Smartphone, Video } from "lucide-react";
+import {
+  ArrowLeft,
+  Camera,
+  FileText,
+  Mic,
+  Smartphone,
+  Video,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+
 import { api } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { tokenStorage } from "../auth/tokenStorage";
 import { ROLES } from "../auth/roles";
-import { Avatar, StatusBadge, btnPrimarySm } from "../components/Common";
+
+import {
+  Avatar,
+  StatusBadge,
+  btnPrimarySm,
+} from "../components/Common";
+
 import Alert from "../components/ui/Alert";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import PageHeader from "../components/ui/PageHeader";
 import { LoadingState } from "../components/ui/StateViews";
-import { doctorById } from "../data/doctors";
+
 import {
   DURATION_MIN,
   isAutoLink,
@@ -27,6 +41,10 @@ import {
   JOIN_BEFORE_MIN,
 } from "../lib/tele";
 
+// --------------------------------------------------
+// Test de connexion
+// --------------------------------------------------
+
 function ConnectionTest() {
   const [state, setState] = useState({
     phase: "idle",
@@ -34,7 +52,11 @@ function ConnectionTest() {
   });
 
   async function run() {
-    setState({ phase: "run", text: "Test en cours…" });
+    setState({
+      phase: "run",
+      text: "Test en cours…",
+    });
+
     const parts = [];
 
     try {
@@ -58,9 +80,12 @@ function ConnectionTest() {
       );
     }
 
-    parts.push(navigator.onLine ? "Réseau OK" : "Hors ligne");
+    parts.push(
+      navigator.onLine ? "Réseau OK" : "Hors ligne"
+    );
 
-    const ok = parts.every((p) => /OK$/.test(p));
+    const ok = parts.every((part) => /OK$/.test(part));
+
     setState({
       phase: ok ? "ok" : "warn",
       text: parts.join(" · "),
@@ -78,14 +103,20 @@ function ConnectionTest() {
     <Card className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
-          <Smartphone className="h-4 w-4" aria-hidden="true" />
+          <Smartphone
+            className="h-4 w-4"
+            aria-hidden="true"
+          />
         </span>
 
         <div>
           <p className="text-sm font-semibold text-slate-800">
             Test de connexion
           </p>
-          <p className={`text-xs ${tone}`}>{state.text}</p>
+
+          <p className={`text-xs ${tone}`}>
+            {state.text}
+          </p>
         </div>
       </div>
 
@@ -102,94 +133,257 @@ function ConnectionTest() {
   );
 }
 
+// --------------------------------------------------
+// Page détails de la téléconsultation
+// --------------------------------------------------
+
 export default function DetailsPage() {
   const { id } = useParams();
+
   const { user, loading } = useAuth();
+
   const token = tokenStorage.get();
   const now = useNow();
 
   const [t, setT] = useState(null);
   const [patientName, setPatientName] = useState("");
+
+  // Médecin récupéré dynamiquement depuis PostgreSQL.
+  const [doctor, setDoctor] = useState(null);
+  const [doctorLoading, setDoctorLoading] = useState(false);
+  const [doctorError, setDoctorError] = useState("");
+
   const [error, setError] = useState("");
 
   const isDoctor = user?.role === ROLES.DOCTOR;
 
-  // Charger les détails de la téléconsultation
+  // --------------------------------------------------
+  // 1. Charger les détails de la téléconsultation
+  // --------------------------------------------------
+
   useEffect(() => {
     if (loading || !token || !user?.id) return;
 
-    api
-      .get(token, id)
-      .then(setT)
-      .catch((e) =>
-        setError(
-          e.status === 404
-            ? "Téléconsultation introuvable."
-            : e.message
-        )
-      );
+    let cancelled = false;
+
+    async function loadTeleconsultation() {
+      try {
+        const data = await api.get(token, id);
+
+        if (!cancelled) {
+          setT(data);
+          setError("");
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(
+            e.status === 404
+              ? "Téléconsultation introuvable."
+              : e.message || "Impossible de charger la consultation."
+          );
+        }
+      }
+    }
+
+    loadTeleconsultation();
+
+    return () => {
+      cancelled = true;
+    };
   }, [loading, token, user?.id, id]);
 
-  // Récupérer le nom du patient
-  useEffect(() => {
-    if (loading || !user || !token || !t) return;
+  // --------------------------------------------------
+  // 2. Charger le médecin depuis l'API dynamique
+  // --------------------------------------------------
 
-    if (!isDoctor) {
-      setPatientName(user.name);
+  useEffect(() => {
+    if (loading || !token || !user?.id || !t?.doctor_id) {
       return;
     }
 
-    api
-      .patients(token)
-      .then((list) => {
-        const p = list.find((x) => x.id === t.patient_id);
+    let cancelled = false;
+
+    async function loadDoctor() {
+      setDoctor(null);
+      setDoctorError("");
+      setDoctorLoading(true);
+
+      try {
+        const doctors = await api.doctors(token);
+
+        const foundDoctor = doctors.find(
+          (d) => d.id === t.doctor_id
+        );
+
+        if (!cancelled) {
+          setDoctor(foundDoctor || null);
+
+          if (!foundDoctor) {
+            setDoctorError(
+              "Le médecin associé à cette consultation est introuvable dans l'annuaire."
+            );
+          }
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setDoctor(null);
+          setDoctorError(
+            e.message || "Impossible de charger le médecin."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setDoctorLoading(false);
+        }
+      }
+    }
+
+    loadDoctor();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, token, user?.id, t?.doctor_id]);
+
+  // --------------------------------------------------
+  // 3. Récupérer le nom du patient
+  // --------------------------------------------------
+
+  useEffect(() => {
+    if (loading || !user || !token || !t) return;
+
+    let cancelled = false;
+
+    async function loadPatient() {
+      if (!isDoctor) {
+        setPatientName(user.name || "Patient");
+        return;
+      }
+
+      try {
+        const list = await api.patients(token);
+
+        if (cancelled) return;
+
+        const patient = list.find(
+          (p) => p.id === t.patient_id
+        );
 
         setPatientName(
-          p
-            ? `${p.first_name} ${p.last_name}`
+          patient
+            ? `${patient.first_name} ${patient.last_name}`
             : `Patient #${t.patient_id.slice(0, 8)}`
         );
-      })
-      .catch(() =>
-        setPatientName(`Patient #${t.patient_id.slice(0, 8)}`)
-      );
-  }, [loading, isDoctor, token, user?.name, user?.id, t]);
+      } catch {
+        if (!cancelled) {
+          setPatientName(
+            `Patient #${t.patient_id.slice(0, 8)}`
+          );
+        }
+      }
+    }
+
+    loadPatient();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    loading,
+    isDoctor,
+    token,
+    user?.name,
+    user?.id,
+    t,
+  ]);
+
+  // --------------------------------------------------
+  // 4. Bouton retour
+  // --------------------------------------------------
 
   const back = (
     <Link to="/teleconsultations">
       <Button type="button" variant="secondary">
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        <ArrowLeft
+          className="h-4 w-4"
+          aria-hidden="true"
+        />
         Retour
       </Button>
     </Link>
   );
 
+  // --------------------------------------------------
+  // 5. Gestion du chargement et des erreurs
+  // --------------------------------------------------
+
   if (error) {
     return (
       <div className="space-y-4">
-        <PageHeader title="Détails du rendez-vous" actions={back} />
+        <PageHeader
+          title="Détails du rendez-vous"
+          actions={back}
+        />
+
         <Alert>{error}</Alert>
       </div>
     );
   }
 
-  if (!t) return <LoadingState />;
+  if (!t) {
+    return <LoadingState />;
+  }
 
-  const doctor = doctorById(t.doctor_id);
-  const doctorName = doctor ? doctor.name : "Médecin";
+  // --------------------------------------------------
+  // 6. Informations du médecin et de la consultation
+  // --------------------------------------------------
+
+  const doctorName = doctor?.full_name?.trim()
+    || (doctorLoading ? "Chargement du médecin..." : "Médecin");
+
+  const doctorSubtitle = doctor
+    ? "Médecin"
+    : doctorLoading
+      ? "Chargement..."
+      : "Nom indisponible";
+
   const start = parseUtc(t.scheduled_at);
   const live = liveState(t, now);
 
   const canJoinLater =
-    t.status === "SCHEDULED" && !live && start && now < start;
+    t.status === "SCHEDULED" &&
+    !live &&
+    start &&
+    now < start;
 
+  // Informations du rendez-vous.
   const rows = [
-    ["Date", start ? longDate(start) : "À fixer par le médecin"],
-    ["Heure", start ? timeLabel(start) : "—"],
-    ["Durée prévue", `${DURATION_MIN} minutes`],
-    ["Patient", patientName || "…"],
-    ["Motif", t.notes || "—"],
-    ["Statut", STATUS_LABELS[t.status] || t.status],
+    [
+      "Date",
+      start
+        ? longDate(start)
+        : "À fixer par le médecin",
+    ],
+    [
+      "Heure",
+      start ? timeLabel(start) : "—",
+    ],
+    [
+      "Durée prévue",
+      `${DURATION_MIN} minutes`,
+    ],
+    [
+      "Patient",
+      patientName || "Chargement...",
+    ],
+    [
+      "Motif",
+      t.notes || "—",
+    ],
+    [
+      "Statut",
+      STATUS_LABELS[t.status] || t.status,
+    ],
   ];
 
   if (t.status === "SCHEDULED") {
@@ -201,11 +395,28 @@ export default function DetailsPage() {
     ]);
   }
 
+  // Conseils de préparation.
   const PREP = [
-    [Mic, "Micro et haut-parleurs", "Vérifiez que le son fonctionne"],
-    [Camera, "Caméra et éclairage", "Placez-vous face à une source de lumière"],
-    [FileText, "Analyses récentes", "Ayez vos résultats sous la main"],
+    [
+      Mic,
+      "Micro et haut-parleurs",
+      "Vérifiez que le son fonctionne",
+    ],
+    [
+      Camera,
+      "Caméra et éclairage",
+      "Placez-vous face à une source de lumière",
+    ],
+    [
+      FileText,
+      "Analyses récentes",
+      "Ayez vos résultats sous la main",
+    ],
   ];
+
+  // --------------------------------------------------
+  // 7. Affichage
+  // --------------------------------------------------
 
   return (
     <div className="space-y-6">
@@ -215,16 +426,24 @@ export default function DetailsPage() {
         actions={back}
       />
 
+      {/* Informations du médecin */}
       <Card className="flex flex-wrap items-center gap-4">
         <Avatar name={doctorName} size={52} />
 
         <div className="flex-1">
-          <p className="font-semibold text-slate-800">{doctorName}</p>
-          <p className="text-sm text-slate-500">
-            {doctor
-              ? `${doctor.specialty} · ${doctor.office}`
-              : `Médecin #${t.doctor_id.slice(0, 8)}`}
+          <p className="font-semibold text-slate-800">
+            {doctorName}
           </p>
+
+          <p className="text-sm text-slate-500">
+            {doctorSubtitle}
+          </p>
+
+          {doctorError && (
+            <p className="mt-1 text-xs text-amber-700">
+              {doctorError}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -237,7 +456,10 @@ export default function DetailsPage() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Video className="h-4 w-4" aria-hidden="true" />
+              <Video
+                className="h-4 w-4"
+                aria-hidden="true"
+              />
               Rejoindre la session
             </a>
           )}
@@ -248,35 +470,43 @@ export default function DetailsPage() {
               disabled
               title={`Disponible ${JOIN_BEFORE_MIN} min avant l'heure`}
             >
-              <Video className="h-4 w-4" aria-hidden="true" />
+              <Video
+                className="h-4 w-4"
+                aria-hidden="true"
+              />
               Rejoindre la session
             </Button>
           )}
         </div>
       </Card>
 
+      {/* Information sur l'activation du lien */}
       {canJoinLater && (
         <p className="text-sm text-slate-500">
-          Le bouton « Rejoindre » s'active {JOIN_BEFORE_MIN} minutes avant
-          l'heure du rendez-vous.
+          Le bouton « Rejoindre » s'active{" "}
+          {JOIN_BEFORE_MIN} minutes avant l'heure du rendez-vous.
         </p>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        {/* Informations de la consultation */}
         <Card>
           <h2 className="mb-4 text-lg font-bold text-brand-900">
             Informations de la consultation
           </h2>
 
           <dl className="divide-y divide-slate-100 text-sm">
-            {rows.map(([k, v]) => (
+            {rows.map(([key, value]) => (
               <div
-                key={k}
+                key={key}
                 className="flex justify-between gap-4 py-2.5"
               >
-                <dt className="text-slate-500">{k}</dt>
+                <dt className="text-slate-500">
+                  {key}
+                </dt>
+
                 <dd className="text-right font-medium text-slate-800">
-                  {v}
+                  {value}
                 </dd>
               </div>
             ))}
@@ -294,6 +524,7 @@ export default function DetailsPage() {
           )}
         </Card>
 
+        {/* Préparation de la téléconsultation */}
         <div className="space-y-4">
           <Card>
             <h2 className="mb-4 text-lg font-bold text-brand-900">
@@ -302,16 +533,25 @@ export default function DetailsPage() {
 
             <ul className="space-y-4">
               {PREP.map(([Icon, title, hint]) => (
-                <li key={title} className="flex items-center gap-3">
+                <li
+                  key={title}
+                  className="flex items-center gap-3"
+                >
                   <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
-                    <Icon className="h-4 w-4" aria-hidden="true" />
+                    <Icon
+                      className="h-4 w-4"
+                      aria-hidden="true"
+                    />
                   </span>
 
                   <div>
                     <p className="text-sm font-semibold text-slate-800">
                       {title}
                     </p>
-                    <p className="text-xs text-slate-500">{hint}</p>
+
+                    <p className="text-xs text-slate-500">
+                      {hint}
+                    </p>
                   </div>
                 </li>
               ))}
