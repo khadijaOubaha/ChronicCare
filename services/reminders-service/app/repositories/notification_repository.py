@@ -57,6 +57,7 @@ def _list_for_recipient(
     limit: int,
     offset: int,
     unread_only: bool,
+    patient_id: uuid.UUID | None = None,
 ):
     query = (
         select(Notification)
@@ -72,6 +73,9 @@ def _list_for_recipient(
 
     if unread_only:
         query = query.where(NotificationRecipient.is_read.is_(False))
+
+    if patient_id is not None:
+        query = query.where(Notification.patient_id == patient_id)
 
     count_query = select(func.count()).select_from(query.subquery())
     total = db.scalar(count_query) or 0
@@ -103,10 +107,17 @@ def list_for_doctor(
     limit: int = 20,
     offset: int = 0,
     unread_only: bool = False,
+    patient_id: uuid.UUID | None = None,
 ):
-    return _list_for_recipient(
-        db, doctor_user_id, "ADMIN", limit, offset, unread_only
-    )
+   return _list_for_recipient(
+    db,
+    doctor_user_id,
+    "ADMIN",
+    limit,
+    offset,
+    unread_only,
+    patient_id,
+)
 
 
 def mark_as_read(

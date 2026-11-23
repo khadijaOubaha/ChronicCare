@@ -33,8 +33,8 @@ def receive_event(
     )
 
     event, notification = event_service.process_event(
-        db,
-        payload,
+        db=db,
+        data=payload,
         patient_user_id=patient_identity.user_id,
     )
 

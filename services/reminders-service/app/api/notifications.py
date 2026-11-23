@@ -85,6 +85,7 @@ def list_notifications(
             limit,
             offset,
             unread_only,
+            patient_id,
         )
 
         if patient_id is not None:

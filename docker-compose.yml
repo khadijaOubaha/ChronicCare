@@ -18,8 +18,6 @@ services:
       timeout: 5s
       retries: 5
 
-
-
   patients-service:
     build:
       context: ./services/patients-service
@@ -61,6 +59,8 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY doit être définie dans .env}
+      PATIENTS_SERVICE_URL: "http://patients-service:8001"
     ports:
       - "127.0.0.1:${REMINDERS_PORT:-8004}:8004"
     depends_on:
@@ -68,7 +68,6 @@ services:
         condition: service_healthy
 
     
-
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: chroniccare-pgadmin
@@ -130,6 +129,7 @@ services:
       PATIENTS_URL: "http://patients-service:8001"
       TREATMENTS_URL: "http://treatments-service:8002"
       MESURES_URL: "http://mesures-service:8003"
+      REMINDERS_URL: "http://reminders-service:8004"
     ports:
       - "127.0.0.1:3000:3000"
     depends_on:
@@ -141,7 +141,8 @@ services:
         condition: service_started
       mesures-service:
         condition: service_started
-
+      reminders-service:
+        condition: service_started
   teleconsultations-service:
     build:
       context: ./services/teleconsultations-service
@@ -171,4 +172,7 @@ services:
 
 volumes:
   chroniccare_postgres_data:
+    external: true
+    name: chroniccare_chroniccare_postgres_data
+
   chroniccare_pgadmin_data:

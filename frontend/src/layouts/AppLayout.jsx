@@ -1,6 +1,7 @@
 
 import {
   Activity,
+  Bell,
   ClipboardList,
   FileText,
   LayoutDashboard,
@@ -10,10 +11,15 @@ import {
   Users,
   Video,
 } from "lucide-react";
-import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { ROLE_LABELS, ROLES } from "../auth/roles";
 import Logo from "../components/ui/Logo";
+
+import { useEffect, useState } from "react";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { remindersApi } from "../api/remindersApi";
+
+
 
 const DASH = {
   to: "/",
@@ -41,6 +47,11 @@ const NAV = {
       label: "Mes mesures",
       icon: Activity,
     },
+    {
+      to: "/notifications",
+      label: "Notifications",
+      icon: Bell,
+    },
     TELE,
   ],
 
@@ -61,6 +72,11 @@ const NAV = {
       label: "Prescriptions",
       icon: FileText,
     },
+    {
+      to: "/notifications",
+      label: "Notifications",
+      icon: Bell,
+    },
     TELE,
   ],
 };
@@ -78,7 +94,7 @@ const ACCOUNT_NAV = [
   },
 ];
 
-function NavigationLink({ item }) {
+function NavigationLink({ item, unreadCount = 0 }) {
   const { to, label, icon: Icon, end } = item;
 
   return (
@@ -90,13 +106,56 @@ function NavigationLink({ item }) {
       }
     >
       <Icon size={18} aria-hidden="true" />
+
       <span>{label}</span>
+
+      {to === "/notifications" && unreadCount > 0 && (
+        <span
+          className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-xs font-bold text-white"
+          aria-label={`${unreadCount} notifications non lues`}
+        >
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      )}
     </NavLink>
   );
 }
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const location = useLocation();
+
+  useEffect(() => {
+    let active = true;
+
+    const loadUnreadCount = async () => {
+      if (user?.role !== ROLES.PATIENT && user?.role !== ROLES.DOCTOR) {
+      setUnreadCount(0);
+      return;
+      }
+
+      try {
+        const data = await remindersApi.list({
+          limit: 1,
+          offset: 0,
+          unreadOnly: true,
+        });
+
+        if (active) {
+          setUnreadCount(data?.total ?? 0);
+        }
+      } catch (error) {
+        console.error("Erreur de chargement du compteur :", error);
+      }
+    };
+
+    loadUnreadCount();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.role, location.pathname]); 
   const items = NAV[user?.role] ?? [DASH];
 
   const initials = (user?.full_name || "U")

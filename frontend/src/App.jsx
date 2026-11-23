@@ -36,6 +36,8 @@ import PatientList from "./pages/PatientList";
 import RequestPage from "./pages/RequestPage";
 import DetailsPage from "./pages/DetailsPage";
 
+import NotificationsPage from "./pages/NotificationsPage";
+
 const only = (role, element) => (
   <ProtectedRoute roles={[role]}>{element}</ProtectedRoute>
 );
@@ -61,6 +63,8 @@ export default function App() {
         }
       >
         <Route index element={<DashboardPage />} />
+
+        <Route path="notifications" element={<NotificationsPage />} />
 
         <Route path="profil" element={<ProfilePage />} />
         <Route path="securite" element={<SecurityPage />} />
