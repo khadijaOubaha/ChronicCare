@@ -1,8 +1,4 @@
-"""Tests unitaires de app/repositories/notification_repository.py.
 
-La session SQLAlchemy est simulée par un MagicMock : on vérifie la logique
-(état de l'objet, appels commit/refresh) sans base de données.
-"""
 import uuid
 from datetime import timezone
 from unittest.mock import MagicMock
@@ -10,13 +6,28 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.models.notification import Notification
+from app.models.notification_recipient import NotificationRecipient
 from app.repositories import notification_repository as repo
 from app.schemas.notification import NotificationCreate
 
 
+PATIENT_USER_ID = uuid.uuid4()
+DOCTOR_ID = uuid.uuid4()
+
+
 @pytest.fixture
 def db():
-    return MagicMock()
+    session = MagicMock()
+
+    def fake_flush():
+        # Simule l'attribution de l'UUID par SQLAlchemy après insertion.
+        for call in session.add.call_args_list:
+            obj = call.args[0]
+            if isinstance(obj, Notification) and obj.id is None:
+                obj.id = uuid.uuid4()
+
+    session.flush.side_effect = fake_flush
+    return session
 
 
 def make_notification(is_read=False):
@@ -30,88 +41,203 @@ def make_notification(is_read=False):
     )
 
 
-# RMD-08 : CAS NORMAL ----------------------------------------------------
+def make_recipient(is_read=False):
+    return NotificationRecipient(
+        notification_id=uuid.uuid4(),
+        user_id=PATIENT_USER_ID,
+        role="PATIENT",
+        is_read=is_read,
+        read_at=None,
+    )
+
+
 def test_mark_as_read_met_a_jour_l_etat(db):
-    notification = make_notification()
+    recipient = make_recipient()
+    db.scalar.return_value = recipient
 
-    result = repo.mark_as_read(db, notification)
+    result = repo.mark_as_read(
+        db,
+        recipient.notification_id,
+        PATIENT_USER_ID,
+        "PATIENT",
+    )
 
+    assert result is recipient
     assert result.is_read is True
     assert result.read_at is not None
     assert result.read_at.tzinfo == timezone.utc
-    db.commit.assert_called_once()
-    db.refresh.assert_called_once_with(notification)
-
-
-# RMD-09 : CAS LIMITE (déjà lue : idempotent, pas d'écriture) -------------
-def test_mark_as_read_deja_lue_ne_fait_rien(db):
-    notification = make_notification(is_read=True)
-
-    repo.mark_as_read(db, notification)
-
-    assert notification.read_at is None  # la date n'est pas écrasée
+    db.flush.assert_called_once()
     db.commit.assert_not_called()
 
 
+def test_mark_as_read_deja_lue_ne_fait_rien(db):
+    recipient = make_recipient(is_read=True)
+    original_date = recipient.read_at
+    db.scalar.return_value = recipient
+
+    result = repo.mark_as_read(
+        db,
+        recipient.notification_id,
+        PATIENT_USER_ID,
+        "PATIENT",
+    )
+
+    assert result.is_read is True
+    assert result.read_at == original_date
+    db.flush.assert_not_called()
+
+
 def test_mark_as_read_deux_fois_conserve_la_premiere_date(db):
-    notification = make_notification()
+    recipient = make_recipient()
+    db.scalar.return_value = recipient
 
-    repo.mark_as_read(db, notification)
-    premiere_date = notification.read_at
-    repo.mark_as_read(db, notification)
+    repo.mark_as_read(
+        db,
+        recipient.notification_id,
+        PATIENT_USER_ID,
+        "PATIENT",
+    )
+    first_date = recipient.read_at
 
-    assert notification.read_at == premiere_date
-    db.commit.assert_called_once()
+    repo.mark_as_read(
+        db,
+        recipient.notification_id,
+        PATIENT_USER_ID,
+        "PATIENT",
+    )
+
+    assert recipient.read_at == first_date
+    assert recipient.is_read is True
 
 
-# RMD-10 : création avec ou sans événement source -------------------------
-def test_create_enregistre_la_notification_avec_source_event_id(db):
+def test_mark_as_read_refuse_un_autre_destinataire(db):
+    db.scalar.return_value = None
+
+    result = repo.mark_as_read(
+        db,
+        uuid.uuid4(),
+        PATIENT_USER_ID,
+        "PATIENT",
+    )
+
+    assert result is None
+
+
+def test_create_enregistre_notification_et_deux_destinataires(db):
     data = NotificationCreate(
-        patient_id=uuid.uuid4(), type="alert", title="T", message="M"
+        patient_id=uuid.uuid4(),
+        doctor_id=DOCTOR_ID,
+        type="alert",
+        title="T",
+        message="M",
     )
     source_id = uuid.uuid4()
 
-    result = repo.create(db, data, source_event_id=source_id)
+    result = repo.create(
+        db,
+        data,
+        patient_user_id=PATIENT_USER_ID,
+        source_event_id=source_id,
+    )
 
     assert result.source_event_id == source_id
     assert result.patient_id == data.patient_id
-    db.add.assert_called_once_with(result)
-    db.commit.assert_called_once()
 
+    added_objects = [call.args[0] for call in db.add.call_args_list]
 
-def test_create_sans_evenement_source_laisse_source_event_id_vide(db):
-    data = NotificationCreate(
-        patient_id=uuid.uuid4(), type="info", title="T", message="M"
+    assert len(added_objects) == 3
+    assert isinstance(added_objects[0], Notification)
+
+    recipients = [
+        obj for obj in added_objects
+        if isinstance(obj, NotificationRecipient)
+    ]
+
+    assert len(recipients) == 2
+    assert any(
+        r.user_id == PATIENT_USER_ID and r.role == "PATIENT"
+        for r in recipients
+    )
+    assert any(
+        r.user_id == DOCTOR_ID and r.role == "ADMIN"
+        for r in recipients
     )
 
-    result = repo.create(db, data)
-
-    assert result.source_event_id is None
+    db.commit.assert_not_called()
 
 
-# RMD-11 : CAS LIMITE (aucun résultat) ------------------------------------
+def test_create_sans_medecin_cree_un_seul_destinataire(db):
+    data = NotificationCreate(
+        patient_id=uuid.uuid4(),
+        doctor_id=None,
+        type="info",
+        title="T",
+        message="M",
+    )
+
+    repo.create(
+        db,
+        data,
+        patient_user_id=PATIENT_USER_ID,
+    )
+
+    recipients = [
+        call.args[0]
+        for call in db.add.call_args_list
+        if isinstance(call.args[0], NotificationRecipient)
+    ]
+
+    assert len(recipients) == 1
+    assert recipients[0].user_id == PATIENT_USER_ID
+    assert recipients[0].role == "PATIENT"
+
+
 def test_list_for_patient_sans_resultat_retourne_liste_vide_et_zero(db):
-    db.scalar.return_value = None           # COUNT absent
+    db.scalar.return_value = None
     db.scalars.return_value.all.return_value = []
 
-    items, total = repo.list_for_patient(db, uuid.uuid4(), limit=20, offset=0)
+    items, total = repo.list_for_patient(
+        db,
+        PATIENT_USER_ID,
+        limit=20,
+        offset=0,
+    )
 
     assert items == []
     assert total == 0
 
 
 def test_list_for_patient_retourne_items_et_total(db):
-    fausses = [make_notification(), make_notification()]
+    notifications = [make_notification(), make_notification()]
     db.scalar.return_value = 5
-    db.scalars.return_value.all.return_value = fausses
+    db.scalars.return_value.all.return_value = notifications
 
-    items, total = repo.list_for_patient(db, uuid.uuid4(), limit=2, offset=0)
+    items, total = repo.list_for_patient(
+        db,
+        PATIENT_USER_ID,
+        limit=2,
+        offset=0,
+    )
 
-    assert items == fausses
+    assert items == notifications
     assert total == 5
 
 
-# RMD-12 : recherche d'une notification ----------------------------------
+def test_list_for_doctor_utilise_le_role_admin(db):
+    db.scalar.return_value = 0
+    db.scalars.return_value.all.return_value = []
+
+    items, total = repo.list_for_doctor(
+        db,
+        DOCTOR_ID,
+        limit=20,
+        offset=0,
+    )
+
+    assert items == []
+    assert total == 0
+
+
 def test_get_delegue_a_la_session(db):
     notification_id = uuid.uuid4()
     db.get.return_value = None

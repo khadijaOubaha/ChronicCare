@@ -1,5 +1,4 @@
-
-import os
+﻿import os
 from typing import Annotated
 from uuid import UUID
 
@@ -77,7 +76,10 @@ def get_current_user(
 
 
 def require_admin(
-    current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    current_user: Annotated[
+        CurrentUser,
+        Depends(get_current_user),
+    ],
 ) -> CurrentUser:
     if current_user.role != "ADMIN":
         raise HTTPException(

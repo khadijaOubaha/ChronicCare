@@ -1,85 +1,110 @@
 
-import uuid
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import CurrentUser, get_current_user, require_admin
-from app.repositories import notification_repository as repo
+from app.core.security import CurrentUser, get_current_user
+from app.models.notification import Notification
+from app.models.notification_recipient import NotificationRecipient
+from app.repositories import notification_repository
 from app.schemas.notification import (
     NotificationCreate,
-    NotificationList,
     NotificationRead,
+    NotificationList,
 )
-from app.services.patient_client import get_authorized_patient_id
-
-router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
+from app.services.patient_client import get_authorized_patient
 
 
-def _get_authorized_notification(
+router = APIRouter(
+    prefix="/api/v1/notifications",
+    tags=["notifications"],
+)
+
+
+def _get_recipient(
     db: Session,
-    notification_id: uuid.UUID,
+    notification_id: UUID,
     current_user: CurrentUser,
 ):
-    notification = repo.get(db, notification_id)
-
-    if notification is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Notification introuvable",
+    return db.scalar(
+        select(NotificationRecipient).where(
+            NotificationRecipient.notification_id == notification_id,
+            NotificationRecipient.user_id == current_user.id,
+            NotificationRecipient.role == current_user.role,
         )
-
-    get_authorized_patient_id(
-        current_user,
-        requested_patient_id=notification.patient_id,
     )
 
-    return notification
 
+def _notification_response(
+    notification: Notification,
+    recipient: NotificationRecipient,
+) -> NotificationRead:
+    response = NotificationRead.model_validate(notification)
 
-@router.post(
-    "",
-    response_model=NotificationRead,
-    status_code=status.HTTP_201_CREATED,
-)
-def create_notification(
-    payload: NotificationCreate,
-    db: Session = Depends(get_db),
-    current_user: CurrentUser = Depends(require_admin),
-):
-    get_authorized_patient_id(
-        current_user,
-        requested_patient_id=payload.patient_id,
+    return response.model_copy(
+        update={
+            "is_read": recipient.is_read,
+            "read_at": recipient.read_at,
+        }
     )
-
-    return repo.create(db, payload)
 
 
 @router.get("", response_model=NotificationList)
 def list_notifications(
-    patient_id: uuid.UUID | None = None,
+    patient_id: UUID | None = None,
+    unread_only: bool = False,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    unread_only: bool = False,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    authorized_patient_id = get_authorized_patient_id(
-        current_user,
-        requested_patient_id=patient_id,
-    )
+    if current_user.role == "PATIENT":
+        identity = get_authorized_patient(current_user)
 
-    items, total = repo.list_for_patient(
-        db,
-        authorized_patient_id,
-        limit,
-        offset,
-        unread_only,
-    )
+        if patient_id is not None and patient_id != identity.patient_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Accès interdit à ce patient",
+            )
+
+        items, total = notification_repository.list_for_patient(
+            db,
+            current_user.id,
+            limit,
+            offset,
+            unread_only,
+        )
+
+    elif current_user.role == "ADMIN":
+        items, total = notification_repository.list_for_doctor(
+            db,
+            current_user.id,
+            limit,
+            offset,
+            unread_only,
+        )
+
+        if patient_id is not None:
+            items = [item for item in items if item.patient_id == patient_id]
+            # Le filtrage patient_id devra être déplacé dans
+            # la requête SQL pour une pagination exacte.
+
+    else:
+        raise HTTPException(status_code=403, detail="Accès interdit")
+
+    result = []
+
+    for notification in items:
+        recipient = _get_recipient(db, notification.id, current_user)
+
+        if recipient is not None:
+            result.append(_notification_response(notification, recipient))
 
     return NotificationList(
-        items=items,
+        items=result,
         total=total,
         limit=limit,
         offset=offset,
@@ -88,30 +113,57 @@ def list_notifications(
 
 @router.get("/{notification_id}", response_model=NotificationRead)
 def get_notification(
-    notification_id: uuid.UUID,
+    notification_id: UUID,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    return _get_authorized_notification(
-        db,
-        notification_id,
-        current_user,
-    )
+    notification = notification_repository.get(db, notification_id)
+
+    if notification is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Notification introuvable",
+        )
+
+    recipient = _get_recipient(db, notification_id, current_user)
+
+    if recipient is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Accès interdit à cette notification",
+        )
+
+    return _notification_response(notification, recipient)
 
 
-@router.patch(
-    "/{notification_id}/read",
-    response_model=NotificationRead,
-)
+@router.patch("/{notification_id}/read", response_model=NotificationRead)
 def mark_notification_as_read(
-    notification_id: uuid.UUID,
+    notification_id: UUID,
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user),
 ):
-    notification = _get_authorized_notification(
+    notification = notification_repository.get(db, notification_id)
+
+    if notification is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Notification introuvable",
+        )
+
+    recipient = notification_repository.mark_as_read(
         db,
         notification_id,
-        current_user,
+        current_user.id,
+        current_user.role,
     )
 
-    return repo.mark_as_read(db, notification)
+    if recipient is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Accès interdit à cette notification",
+        )
+
+    db.commit()
+    db.refresh(recipient)
+
+    return _notification_response(notification, recipient)

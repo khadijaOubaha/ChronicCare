@@ -1,3 +1,4 @@
+
 import uuid
 from datetime import datetime
 
@@ -22,8 +23,8 @@ class NotificationRead(BaseModel):
     title: str
     message: str
     source_event_id: uuid.UUID | None
-    is_read: bool
-    read_at: datetime | None
+    is_read: bool = False
+    read_at: datetime | None = None
     created_at: datetime
 
 

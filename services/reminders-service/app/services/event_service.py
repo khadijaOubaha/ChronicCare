@@ -1,13 +1,13 @@
+
+from uuid import UUID
+
 from sqlalchemy.orm import Session
 
-from app.models.notification import Notification
 from app.repositories import event_repository, notification_repository
-from app.schemas.event import EventCreate
 from app.schemas.notification import NotificationCreate
 
-# Types d'événements connus -> (type, titre, message) de la notification.
-# La liste exacte est à valider avec l'équipe.
-EVENT_TEMPLATES: dict[str, tuple[str, str, str]] = {
+
+EVENT_TEMPLATES = {
     "measurement.abnormal": (
         "alert",
         "Mesure à vérifier",
@@ -30,25 +30,49 @@ class UnknownEventType(Exception):
     pass
 
 
-def process_event(db: Session, data: EventCreate) -> tuple:
+def process_event(
+    db: Session,
+    data,
+    patient_user_id: UUID,
+):
     template = EVENT_TEMPLATES.get(data.event_type)
+
     if template is None:
         raise UnknownEventType(data.event_type)
 
-    event = event_repository.create(db, data)
+    try:
+        # 1. Enregistrer l'événement
+        event = event_repository.create(db, data)
 
-    notif_type, title, message = template
-    notification: Notification = notification_repository.create(
-        db,
-        NotificationCreate(
+        # 2. Préparer la notification
+        notification_type, title, message = template
+
+        notification_data = NotificationCreate(
             patient_id=data.patient_id,
             doctor_id=data.doctor_id,
-            type=notif_type,
+            type=notification_type,
             title=title,
             message=message,
-        ),
-        source_event_id=event.id,
-    )
+        )
 
-    event_repository.mark_processed(db, event)
-    return event, notification
+        # 3. Créer la notification et ses destinataires
+        notification = notification_repository.create(
+            db=db,
+            data=notification_data,
+            patient_user_id=patient_user_id,
+            source_event_id=event.id,
+        )
+
+        # 4. Marquer l'événement comme traité
+        event_repository.mark_processed(db, event)
+
+        # Une seule validation de transaction
+        db.commit()
+        db.refresh(event)
+        db.refresh(notification)
+
+        return event, notification
+
+    except Exception:
+        db.rollback()
+        raise

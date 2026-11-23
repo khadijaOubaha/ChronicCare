@@ -1,12 +1,14 @@
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app import models  # noqa: F401  (enregistre les tables)
+from app import models  # noqa: F401
 from app.api.health import router as health_router
 from app.api.notifications import router as notifications_router
-from app.core.database import Base, engine
 from app.api.events import router as events_router
+from app.core.database import Base, engine
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

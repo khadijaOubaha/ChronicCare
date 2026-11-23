@@ -1,6 +1,6 @@
 
-
 import os
+from dataclasses import dataclass
 from uuid import UUID
 
 import httpx
@@ -15,13 +15,20 @@ PATIENTS_SERVICE_URL = os.getenv(
 )
 
 
-def get_authorized_patient_id(
+@dataclass(frozen=True)
+class PatientIdentity:
+    patient_id: UUID
+    user_id: UUID
+
+
+def get_authorized_patient(
     current_user: CurrentUser,
     requested_patient_id: UUID | None = None,
-) -> UUID:
+) -> PatientIdentity:
     """
-    Vérifie l'accès au dossier patient via le service Patients
-    et retourne son véritable patient_id.
+    Vérifie l'accès au dossier patient et retourne :
+    - patient_id : identifiant du dossier patient
+    - user_id : identifiant du compte utilisateur
     """
 
     if current_user.role == "PATIENT":
@@ -45,16 +52,21 @@ def get_authorized_patient_id(
             detail="Accès non autorisé.",
         )
 
-    headers = {
-        "Authorization": f"Bearer {current_user.token}"
-    }
-
     try:
         response = httpx.get(
             endpoint,
-            headers=headers,
+            headers={
+                "Authorization": f"Bearer {current_user.token}"
+            },
             timeout=5.0,
         )
+
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=504,
+            detail="Délai dépassé lors de l'appel au service Patients.",
+        )
+
     except httpx.RequestError:
         raise HTTPException(
             status_code=503,
@@ -73,7 +85,7 @@ def get_authorized_patient_id(
             detail="Accès interdit à ce dossier patient.",
         )
 
-    if response.status_code in (401,):
+    if response.status_code == 401:
         raise HTTPException(
             status_code=401,
             detail="Authentification refusée par Patients.",
@@ -86,21 +98,46 @@ def get_authorized_patient_id(
         )
 
     try:
-        patient_id = UUID(response.json()["id"])
+        patient_data = response.json()
+        patient_id = UUID(str(patient_data["id"]))
+
+        raw_user_id = patient_data.get("user_id")
+        if raw_user_id is None:
+            raise ValueError("Compte utilisateur non associé au patient.")
+
+        user_id = UUID(str(raw_user_id))
+
     except (ValueError, KeyError, TypeError):
         raise HTTPException(
             status_code=502,
-            detail="Réponse invalide du service Patients.",
+            detail="Réponse invalide du service Patients : identifiants manquants ou invalides.",
         )
 
     if (
         current_user.role == "PATIENT"
-        and requested_patient_id is not None
-        and patient_id != requested_patient_id
+        and user_id != current_user.id
     ):
         raise HTTPException(
             status_code=403,
-            detail="Vous ne pouvez consulter que vos propres notifications.",
+            detail="Vous ne pouvez consulter que votre propre dossier.",
         )
 
-    return patient_id
+    return PatientIdentity(
+        patient_id=patient_id,
+        user_id=user_id,
+    )
+
+
+def get_authorized_patient_id(
+    current_user: CurrentUser,
+    requested_patient_id: UUID | None = None,
+) -> UUID:
+    """
+    Conserve la compatibilité avec les anciens appels.
+    Retourne uniquement l'identifiant du dossier patient.
+    """
+    identity = get_authorized_patient(
+        current_user,
+        requested_patient_id,
+    )
+    return identity.patient_id

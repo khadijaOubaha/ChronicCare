@@ -1,10 +1,12 @@
 
-import time
-import uuid
 
+import time
 import jwt
 
-PATIENT_ID = str(uuid.uuid4())
+PATIENT_ID = "11111111-1111-1111-1111-111111111111"
+PATIENT_USER_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+DOCTOR_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+
 JWT_SECRET = "chroniccare-test-secret-key-32-bytes-minimum"
 
 
@@ -12,6 +14,7 @@ def make_event(**overrides):
     event = {
         "event_type": "measurement.abnormal",
         "patient_id": PATIENT_ID,
+        "doctor_id": DOCTOR_ID,
         "data": {},
     }
     event.update(overrides)
@@ -20,46 +23,55 @@ def make_event(**overrides):
 
 def make_token():
     now = int(time.time())
+
     payload = {
-        "sub": PATIENT_ID,
+        "sub": DOCTOR_ID,
         "role": "ADMIN",
         "iat": now,
         "exp": now + 3600,
     }
-    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+    return jwt.encode(
+        payload,
+        JWT_SECRET,
+        algorithm="HS256",
+    )
 
 
 def auth_headers():
-    return {"Authorization": f"Bearer {make_token()}"}
-
+    return {
+        "Authorization": f"Bearer {make_token()}"
+    }
 
 
 def test_event_generates_notification(client, mock_patients_service):
     headers = auth_headers()
 
+    # Créer un événement
     response = client.post(
         "/api/v1/events",
         json=make_event(),
         headers=headers,
     )
+
     assert response.status_code == 201
 
     body = response.json()
     assert body["status"] == "processed"
 
+    # Récupérer les notifications du médecin connecté
     listing_response = client.get(
         "/api/v1/notifications",
-        params={"patient_id": PATIENT_ID},
         headers=headers,
     )
 
     assert listing_response.status_code == 200
 
     listing = listing_response.json()
+
     assert listing["total"] == 1
     assert listing["items"][0]["source_event_id"] == body["event_id"]
     assert listing["items"][0]["id"] == body["notification_id"]
-
 
 
 def test_unknown_event_type_returns_422(client):
@@ -68,6 +80,7 @@ def test_unknown_event_type_returns_422(client):
         json=make_event(event_type="inconnu.type"),
         headers=auth_headers(),
     )
+
     assert response.status_code == 422
 
 
@@ -77,6 +90,7 @@ def test_invalid_event_returns_422(client):
         json={"event_type": "measurement.abnormal"},
         headers=auth_headers(),
     )
+
     assert response.status_code == 422
 
 
@@ -85,6 +99,7 @@ def test_event_without_token_returns_401(client):
         "/api/v1/events",
         json=make_event(),
     )
+
     assert response.status_code == 401
 
 
@@ -94,4 +109,5 @@ def test_event_with_invalid_token_returns_401(client):
         json=make_event(),
         headers={"Authorization": "Bearer invalid-token"},
     )
+
     assert response.status_code == 401

@@ -1,8 +1,4 @@
-"""Tests unitaires de app/services/event_service.py (logique métier).
 
-Les repositories sont remplacés par des mocks : aucune base de données,
-aucun serveur HTTP. C'est l'équivalent de Mockito en Java.
-"""
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -11,19 +7,27 @@ import pytest
 from app.schemas.event import EventCreate
 from app.schemas.notification import NotificationCreate
 from app.services import event_service
-from app.services.event_service import EVENT_TEMPLATES, UnknownEventType, process_event
+from app.services.event_service import (
+    EVENT_TEMPLATES,
+    UnknownEventType,
+    process_event,
+)
 
 PATIENT_ID = uuid.uuid4()
+PATIENT_USER_ID = uuid.uuid4()
 DOCTOR_ID = uuid.uuid4()
 
 
 def make_event(event_type="measurement.abnormal", **overrides):
-    return EventCreate(event_type=event_type, patient_id=PATIENT_ID, **overrides)
+    return EventCreate(
+        event_type=event_type,
+        patient_id=PATIENT_ID,
+        **overrides,
+    )
 
 
 @pytest.fixture
 def repos():
-    """Remplace event_repository et notification_repository par des mocks."""
     with patch.object(event_service, "event_repository") as ev, patch.object(
         event_service, "notification_repository"
     ) as notif:
@@ -34,35 +38,49 @@ def repos():
 
 @pytest.fixture
 def db():
-    return MagicMock()  # fausse session SQLAlchemy
+    return MagicMock()
 
 
-# RMD-01 : CAS NORMAL -----------------------------------------------------
 def test_process_event_cree_une_notification_liee_a_l_evenement(repos, db):
     ev, notif = repos
 
-    event, notification = process_event(db, make_event())
+    event, notification = process_event(
+        db,
+        make_event(),
+        patient_user_id=PATIENT_USER_ID,
+    )
 
     assert event is ev.create.return_value
     assert notification is notif.create.return_value
-    args, kwargs = notif.create.call_args
-    data = args[1]
+
+    kwargs = notif.create.call_args.kwargs
+    data = kwargs["data"]
+
     assert isinstance(data, NotificationCreate)
     assert data.patient_id == PATIENT_ID
     assert data.type == "alert"
     assert data.title == "Mesure à vérifier"
-    assert kwargs["source_event_id"] == ev.create.return_value.id
+    assert kwargs["patient_user_id"] == PATIENT_USER_ID
+    assert kwargs["source_event_id"] == event.id
+
+    db.commit.assert_called_once()
+    db.refresh.assert_any_call(event)
+    db.refresh.assert_any_call(notification)
 
 
-# RMD-02 : chaque type connu produit le bon gabarit ----------------------
 @pytest.mark.parametrize("event_type", list(EVENT_TEMPLATES))
 def test_chaque_type_connu_utilise_son_gabarit(repos, db, event_type):
     _, notif = repos
     expected_type, expected_title, expected_message = EVENT_TEMPLATES[event_type]
 
-    process_event(db, make_event(event_type))
+    process_event(
+        db,
+        make_event(event_type),
+        patient_user_id=PATIENT_USER_ID,
+    )
 
-    data = notif.create.call_args.args[1]
+    data = notif.create.call_args.kwargs["data"]
+
     assert (data.type, data.title, data.message) == (
         expected_type,
         expected_title,
@@ -70,49 +88,88 @@ def test_chaque_type_connu_utilise_son_gabarit(repos, db, event_type):
     )
 
 
-# RMD-03 : le médecin est transmis à la notification ----------------------
 def test_doctor_id_est_propage(repos, db):
     _, notif = repos
 
-    process_event(db, make_event(doctor_id=DOCTOR_ID))
+    process_event(
+        db,
+        make_event(doctor_id=DOCTOR_ID),
+        patient_user_id=PATIENT_USER_ID,
+    )
 
-    assert notif.create.call_args.args[1].doctor_id == DOCTOR_ID
+    assert notif.create.call_args.kwargs["data"].doctor_id == DOCTOR_ID
 
 
-# RMD-04 : l'événement est marqué traité --------------------------------
+def test_patient_user_id_est_transmis_au_repository(repos, db):
+    _, notif = repos
+
+    process_event(
+        db,
+        make_event(),
+        patient_user_id=PATIENT_USER_ID,
+    )
+
+    assert notif.create.call_args.kwargs["patient_user_id"] == PATIENT_USER_ID
+
+
 def test_evenement_marque_comme_traite(repos, db):
     ev, _ = repos
 
-    process_event(db, make_event())
+    process_event(
+        db,
+        make_event(),
+        patient_user_id=PATIENT_USER_ID,
+    )
 
     ev.mark_processed.assert_called_once_with(db, ev.create.return_value)
 
 
-# RMD-05 : CAS D'ERREUR (type inconnu) ----------------------------------
 def test_type_inconnu_leve_une_exception_sans_rien_ecrire(repos, db):
     ev, notif = repos
 
     with pytest.raises(UnknownEventType):
-        process_event(db, make_event("inconnu.type"))
+        process_event(
+            db,
+            make_event("inconnu.type"),
+            patient_user_id=PATIENT_USER_ID,
+        )
 
     ev.create.assert_not_called()
     notif.create.assert_not_called()
     ev.mark_processed.assert_not_called()
+    db.commit.assert_not_called()
 
 
-# RMD-06 : CAS LIMITE (le type est sensible à la casse) ------------------
-@pytest.mark.parametrize("event_type", ["Measurement.Abnormal", " measurement.abnormal", "measurement."])
+@pytest.mark.parametrize(
+    "event_type",
+    [
+        "Measurement.Abnormal",
+        " measurement.abnormal",
+        "measurement.",
+    ],
+)
 def test_type_proche_mais_different_est_refuse(repos, db, event_type):
     with pytest.raises(UnknownEventType):
-        process_event(db, make_event(event_type))
+        process_event(
+            db,
+            make_event(event_type),
+            patient_user_id=PATIENT_USER_ID,
+        )
+
+    db.commit.assert_not_called()
 
 
-# RMD-07 : CAS D'ERREUR (échec en cours de traitement) -------------------
-def test_si_creation_notification_echoue_evenement_non_marque_traite(repos, db):
+def test_si_creation_notification_echoue_transaction_annulee(repos, db):
     ev, notif = repos
     notif.create.side_effect = RuntimeError("base indisponible")
 
     with pytest.raises(RuntimeError):
-        process_event(db, make_event())
+        process_event(
+            db,
+            make_event(),
+            patient_user_id=PATIENT_USER_ID,
+        )
 
     ev.mark_processed.assert_not_called()
+    db.rollback.assert_called_once()
+    db.commit.assert_not_called()
