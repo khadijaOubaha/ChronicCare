@@ -33,3 +33,13 @@ class NotificationList(BaseModel):
     total: int
     limit: int
     offset: int
+
+class EventDetails(BaseModel):
+    event_type: str
+    occurred_at: datetime | None = None
+    data: dict = Field(default_factory=dict)
+    received_at: datetime
+
+
+class NotificationDetail(NotificationRead):
+    event_details: EventDetails | None = None    

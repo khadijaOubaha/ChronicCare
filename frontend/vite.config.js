@@ -176,7 +176,7 @@ export default defineConfig(({ mode }) => ({
       "/api/v1/notifications": {
         target: REMINDERS,
         changeOrigin: true,
-      },
+
       },
       "/api/v1/events": {
         target: REMINDERS,

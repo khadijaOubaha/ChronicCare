@@ -8,6 +8,8 @@ import {
   AlertTriangle,
   Calendar,
   RefreshCw,
+  Eye,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -49,6 +51,9 @@ export default function NotificationsPage() {
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [updatingId, setUpdatingId] = useState(null);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
 
   // Charger les patients pour le médecin.
   useEffect(() => {
@@ -150,6 +155,23 @@ export default function NotificationsPage() {
       );
     } finally {
       setUpdatingId(null);
+    }
+  };
+  const openDetails = async (notificationId) => {
+    setDetailsLoading(true);
+    setDetailsError("");
+    setSelectedNotification(null);
+
+    try {
+      const data = await remindersApi.get(notificationId);
+      setSelectedNotification(data);
+    } catch (err) {
+      setDetailsError(
+        err.response?.data?.detail ||
+          "Impossible de charger les détails de cette notification."
+      );
+    } finally {
+      setDetailsLoading(false);
     }
   };
 
@@ -317,6 +339,15 @@ export default function NotificationsPage() {
                     <p className="mt-2 text-xs text-slate-400">
                       {TYPE_LABELS[notification.type] || notification.type}
                     </p>
+
+                    <button
+                      type="button"
+                      onClick={() => openDetails(notification.id)}
+                      className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-brand-700 hover:text-brand-900"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Voir les détails
+                    </button>
                   </div>
 
                   {!notification.is_read && (
@@ -345,6 +376,102 @@ export default function NotificationsPage() {
           })}
         </div>
       )}
+    
+      {(detailsLoading || detailsError || selectedNotification) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="notification-details-title"
+            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <h2 id="notification-details-title" className="text-xl font-bold text-slate-800">
+                Détails de la notification
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedNotification(null);
+                  setDetailsError("");
+                }}
+                aria-label="Fermer"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {detailsLoading ? (
+              <LoadingState />
+            ) : detailsError ? (
+              <p className="rounded-lg bg-rose-50 p-4 text-sm text-rose-700">
+                {detailsError}
+              </p>
+            ) : selectedNotification ? (
+              <div className="space-y-5">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-slate-400">Titre</p>
+                  <p className="mt-1 font-semibold text-slate-800">
+                    {selectedNotification.title}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase text-slate-400">Message</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    {selectedNotification.message}
+                  </p>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-slate-400">Type</p>
+                    <p className="mt-1 text-sm text-slate-700">
+                      {TYPE_LABELS[selectedNotification.type] || selectedNotification.type}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-slate-400">Date de création</p>
+                    <p className="mt-1 text-sm text-slate-700">
+                      {selectedNotification.created_at
+                        ? new Date(selectedNotification.created_at).toLocaleString("fr-FR")
+                        : "Non disponible"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 pt-5">
+                  <h3 className="mb-3 font-semibold text-slate-800">
+                    Informations de l'événement
+                  </h3>
+
+                  {selectedNotification.event_details ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-slate-700">
+                        Type : {selectedNotification.event_details.event_type}
+                      </p>
+                      <p className="text-sm text-slate-700">
+                        Date : {selectedNotification.event_details.occurred_at
+                          ? new Date(selectedNotification.event_details.occurred_at).toLocaleString("fr-FR")
+                          : "Non précisée"}
+                      </p>
+                      <pre className="overflow-x-auto rounded-lg bg-slate-50 p-4 text-xs leading-6 text-slate-700">
+                        {JSON.stringify(selectedNotification.event_details.data, null, 2)}
+                      </pre>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      Aucun d?tail suppl?mentaire associ? ? cette notification.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

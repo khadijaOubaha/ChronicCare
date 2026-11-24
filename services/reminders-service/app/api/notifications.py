@@ -1,6 +1,7 @@
 
 from uuid import UUID
 
+from app.models.event import EventReceived
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,6 +15,7 @@ from app.schemas.notification import (
     NotificationCreate,
     NotificationRead,
     NotificationList,
+    NotificationDetail,
 )
 from app.services.patient_client import get_authorized_patient
 
@@ -112,7 +114,7 @@ def list_notifications(
     )
 
 
-@router.get("/{notification_id}", response_model=NotificationRead)
+@router.get("/{notification_id}", response_model=NotificationDetail)
 def get_notification(
     notification_id: UUID,
     db: Session = Depends(get_db),
@@ -133,9 +135,26 @@ def get_notification(
             status_code=403,
             detail="Accès interdit à cette notification",
         )
+    event_details = None
+    if notification.source_event_id:
+        event = db.get(EventReceived, notification.source_event_id)
 
-    return _notification_response(notification, recipient)
+        if event is not None:
+            payload = event.payload or {}
 
+            event_details = {
+                "event_type": event.event_type,
+                "occurred_at": payload.get("occurred_at"),
+                "data": payload.get("data") or {},
+                "received_at": event.received_at,
+            }
+
+    response = _notification_response(notification, recipient)
+
+    return NotificationDetail(
+        **response.model_dump(),
+        event_details=event_details,
+    )
 
 @router.patch("/{notification_id}/read", response_model=NotificationRead)
 def mark_notification_as_read(
