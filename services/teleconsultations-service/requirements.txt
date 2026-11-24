@@ -6,3 +6,6 @@ alembic
 pydantic[email]
 pyjwt
 httpx
+pytest
+
+pytest-cov

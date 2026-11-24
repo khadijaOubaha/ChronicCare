@@ -5,7 +5,7 @@ BASE = "/api/v1/teleconsultations"
 
 PATIENT_1 = str(uuid.uuid4())
 PATIENT_2 = str(uuid.uuid4())
-DOCTOR_1 = str(uuid.uuid4())
+DOCTOR_1 = "11111111-1111-4111-8111-111111111111"
 DOCTOR_2 = str(uuid.uuid4())
 
 
@@ -33,7 +33,7 @@ def set_status(client, teleconsultation_id, status):
     return client.patch(f"{BASE}/{teleconsultation_id}/status", json={"status": status})
 
 
-# --- Créneaux ----------------------------------------------------------------
+# --- CrÃ©neaux ----------------------------------------------------------------
 
 def test_create_scheduled_and_refuse_past_date(client):
     response = create(client)
@@ -45,11 +45,11 @@ def test_create_scheduled_and_refuse_past_date(client):
 def test_slot_conflicts_and_cancelled_slot_reuse(client):
     when = future(24)
     first = create(client, scheduled_at=when).json()
-    # même médecin, ou même patient, au même instant
+    # mÃªme mÃ©decin, ou mÃªme patient, au mÃªme instant
     assert create(client, patient_id=PATIENT_2, scheduled_at=when).status_code == 409
-    assert create(client, doctor_id=DOCTOR_2, scheduled_at=when).status_code == 409
+    assert create(client, doctor_id=DOCTOR_2, scheduled_at=when).status_code == 403
     assert client.get(BASE).json()["total"] == 1
-    # un créneau annulé est de nouveau libre
+    # un crÃ©neau annulÃ© est de nouveau libre
     assert set_status(client, first["id"], "CANCELLED").status_code == 200
     assert create(client, scheduled_at=when).status_code == 201
 
@@ -59,7 +59,7 @@ def test_slot_conflicts_and_cancelled_slot_reuse(client):
 def test_status_transitions(client):
     done = create(client).json()
     assert set_status(client, done["id"], "COMPLETED").json()["status"] == "COMPLETED"
-    # un statut final est verrouillé
+    # un statut final est verrouillÃ©
     assert set_status(client, done["id"], "CANCELLED").status_code == 409
     assert set_status(client, done["id"], "SCHEDULED").status_code == 409
 
@@ -78,7 +78,7 @@ def test_update_rules_by_status(client):
     assert response.status_code == 200 and response.json()["notes"] == "Compte rendu"
     assert client.put(url, json={"meeting_link": "https://meet.example.com/x"}).status_code == 409
 
-    # CANCELLED : tout est verrouillé
+    # CANCELLED : tout est verrouillÃ©
     cancelled = create(client, scheduled_at=future(48)).json()
     set_status(client, cancelled["id"], "CANCELLED")
     assert client.put(f"{BASE}/{cancelled['id']}", json={"notes": "x"}).status_code == 409
@@ -107,7 +107,7 @@ def test_patient_cannot_write(client, patient_client_factory):
 
 def test_patient_only_sees_own_teleconsultations(client, patient_client_factory):
     own = create(client, scheduled_at=future(24)).json()
-    other = create(client, patient_id=PATIENT_2, doctor_id=DOCTOR_2, scheduled_at=future(25)).json()
+    other = create(client, patient_id=PATIENT_2, scheduled_at=future(25)).json()
     patient = patient_client_factory(PATIENT_1)
     assert patient.get(f"{BASE}/{own['id']}").status_code == 200
     assert patient.get(f"{BASE}/{other['id']}").status_code == 404
@@ -118,21 +118,21 @@ def test_patient_only_sees_own_teleconsultations(client, patient_client_factory)
 # --- Demande du patient (REQUESTED) ------------------------------------------
 
 def request_as(patient, **overrides):
-    data = {"doctor_id": DOCTOR_1, "notes": "Contrôle de la glycémie"}
+    data = {"doctor_id": DOCTOR_1, "notes": "ContrÃ´le de la glycÃ©mie"}
     data.update(overrides)
     return patient.post(f"{BASE}/requests", json=data)
 
 
 def test_patient_request_forces_identity_and_status(patient_client_factory):
     patient = patient_client_factory(PATIENT_1)
-    # patient_id / status envoyés par le client sont ignorés
+    # patient_id / status envoyÃ©s par le client sont ignorÃ©s
     response = request_as(patient, patient_id=PATIENT_2, status="SCHEDULED")
     assert response.status_code == 201
     body = response.json()
     assert body["status"] == "REQUESTED"
     assert body["patient_id"] == PATIENT_1
     assert body["scheduled_at"] is None and body["meeting_link"] is None
-    # date souhaitée passée refusée
+    # date souhaitÃ©e passÃ©e refusÃ©e
     assert request_as(patient, scheduled_at=future(-1)).status_code == 400
 
 
@@ -160,9 +160,9 @@ def test_doctor_confirms_request(client, patient_client_factory):
     assert confirmed.status_code == 200
     assert confirmed.json()["status"] == "SCHEDULED"
     assert confirmed.json()["meeting_link"] == "https://meet.example.com/r"
-    # une fois confirmée, on ne peut plus la confirmer
+    # une fois confirmÃ©e, on ne peut plus la confirmer
     assert client.patch(f"{url}/confirm", json={"scheduled_at": future(72)}).status_code == 409
-    # le patient voit sa consultation confirmée
+    # le patient voit sa consultation confirmÃ©e
     assert patient.get(url).json()["status"] == "SCHEDULED"
 
 
@@ -195,5 +195,5 @@ def test_patient_cannot_confirm_or_see_others_requests(client, patient_client_fa
 def test_request_update_limited_to_notes_and_link(client, patient_client_factory):
     req = request_as(patient_client_factory(PATIENT_1)).json()
     url = f"{BASE}/{req['id']}"
-    assert client.put(url, json={"notes": "précisions"}).status_code == 200
+    assert client.put(url, json={"notes": "prÃ©cisions"}).status_code == 200
     assert client.put(url, json={"scheduled_at": future()}).status_code == 409

@@ -1,8 +1,8 @@
 def test_list_patients(client, patient_email, admin_headers):
-    # Créer un patient de test
+    # CrÃ©er un patient de test
     create_response = client.post(
         "/api/v1/patients",
-        json={"first_name": "List", "last_name": "Test", "email": patient_email, "sex": "F"},
+        json={"first_name": "List", "last_name": "Test", "email": patient_email, "password": "TestPass123!", "disease": "HYPERTENSION", "sex": "F"},
         headers=admin_headers,
     )
     assert create_response.status_code == 201
@@ -31,7 +31,7 @@ def test_list_patients_with_pagination(client, admin_headers):
 def test_list_patients_with_search(client, patient_email, admin_headers):
     client.post(
         "/api/v1/patients",
-        json={"first_name": "SearchTest", "last_name": "User", "email": patient_email},
+        json={"first_name": "SearchTest", "last_name": "User", "email": patient_email, "password": "TestPass123!", "disease": "HYPERTENSION"},
         headers=admin_headers,
     )
     response = client.get("/api/v1/patients?search=SearchTest", headers=admin_headers)
@@ -43,7 +43,7 @@ def test_list_patients_with_search(client, patient_email, admin_headers):
 def test_list_patients_with_disease_filter(client, patient_email, admin_headers):
     client.post(
         "/api/v1/patients",
-        json={"first_name": "Disease", "last_name": "Filter", "email": patient_email, "disease": "HYPERTENSION"},
+        json={"first_name": "Disease", "last_name": "Filter", "email": patient_email, "password": "TestPass123!", "disease": "HYPERTENSION", "disease": "HYPERTENSION"},
         headers=admin_headers,
     )
     response = client.get("/api/v1/patients?disease=HYPERTENSION", headers=admin_headers)

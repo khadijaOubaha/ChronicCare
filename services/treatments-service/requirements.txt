@@ -6,3 +6,7 @@ psycopg[binary]
 pydantic[email]
 PyJWT
 httpx
+
+pytest
+
+pytest-cov
