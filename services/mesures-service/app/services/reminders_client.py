@@ -1,4 +1,5 @@
 
+
 import logging
 
 import httpx
@@ -18,7 +19,7 @@ class RemindersClient:
         event: dict,
         access_token: str,
     ) -> bool:
-        url = f"{self.base_url}/api/v1/events/measurements/abnormal"
+        url = f"{self.base_url}/api/v1/events"
 
         headers = {
             "Authorization": f"Bearer {access_token}",
@@ -35,13 +36,13 @@ class RemindersClient:
             response.raise_for_status()
 
             logger.info(
-                "Événement de mesure anormale envoyé : %s",
+                "Abnormal measurement event sent: %s",
                 event["event_id"],
             )
             return True
 
         except httpx.HTTPError:
             logger.exception(
-                "Échec de l'envoi de l'événement vers Reminders."
+                "Failed to send abnormal measurement event to Reminders."
             )
             return False

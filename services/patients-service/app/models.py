@@ -67,9 +67,9 @@ class Patient(Base):
     )
 
     # Pathologie principale du patient
-    disease: Mapped[str] = mapped_column(
+    disease: Mapped[str | None] = mapped_column(
         String(30),
-        nullable=False,
+        nullable=True,
     )
 
     is_active: Mapped[bool] = mapped_column(
@@ -90,3 +90,4 @@ class Patient(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+

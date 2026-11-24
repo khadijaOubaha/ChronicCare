@@ -13,7 +13,7 @@ const AUTH = process.env.AUTH_URL || "http://localhost:8000";
 const PATIENTS = process.env.PATIENTS_URL || "http://localhost:8001";
 const TREATMENTS = process.env.TREATMENTS_URL || "http://localhost:8002";
 const MESURES = process.env.MESURES_URL || "http://localhost:8003";
-
+const REMINDERS = process.env.REMINDERS_URL || "http://localhost:8004";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -172,7 +172,16 @@ export default defineConfig(({ mode }) => ({
         target: TREATMENTS,
         changeOrigin: true,
       },
+      //remienders 
+      "/api/v1/notifications": {
+        target: REMINDERS,
+        changeOrigin: true,
 
+      },
+      "/api/v1/events": {
+        target: REMINDERS,
+        changeOrigin: true,
+}, 
       // Téléconsultations : communication entre conteneurs Docker.
       "/api/v1/teleconsultations": {
         target: "http://teleconsultations-service:8005",
