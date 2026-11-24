@@ -25,16 +25,16 @@ function formatToday(date) {
 
 function TodaySummary({ cartes }) {
   return (
-    <aside className="rounded-[18px] border border-[#e5eaed] bg-white p-5 sm:p-6">
-      <div className="mb-4 flex items-center gap-2">
-        <ClipboardList size={20} className="text-[#0d8c7c]" />
-        <h2 className="text-lg font-bold text-[#123440]">
+    <aside className="rounded-2xl border border-[#e5eaed] bg-white p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <ClipboardList size={18} className="text-[#0d8c7c]" />
+        <h2 className="text-base font-bold text-[#123440]">
           Mesures du jour
         </h2>
       </div>
 
       {cartes.length === 0 ? (
-        <p className="py-4 text-sm text-[#526f7d]">
+        <p className="py-3 text-sm text-[#526f7d]">
           Aucune mesure prévue aujourd'hui.
         </p>
       ) : (
@@ -45,15 +45,15 @@ function TodaySummary({ cartes }) {
             return (
               <div
                 key={carte.type_mesure.id}
-                className="flex items-center justify-between gap-3 border-b border-[#e8edef] py-4 last:border-b-0"
+                className="flex items-center justify-between gap-3 border-b border-[#e8edef] py-3 last:border-b-0"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-[#173744]">
+                  <p className="truncate text-sm font-medium text-[#173744]">
                     {carte.type_mesure.nom}
                   </p>
 
                   {recorded && carte.mesure && (
-                    <p className="mt-1 text-sm text-[#526f7d]">
+                    <p className="mt-1 text-xs text-[#526f7d]">
                       {carte.mesure.valeur}
                       {carte.mesure.valeur_secondaire != null
                         ? ` / ${carte.mesure.valeur_secondaire}`
@@ -65,7 +65,7 @@ function TodaySummary({ cartes }) {
                 </div>
 
                 <span
-                  className={`shrink-0 text-right text-xs font-bold sm:text-sm ${
+                  className={`shrink-0 text-right text-xs font-bold ${
                     recorded ? "text-[#078575]" : "text-[#b45309]"
                   }`}
                 >
@@ -184,38 +184,40 @@ export default function AddMeasurePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center gap-3 text-sm text-[#526f7d]">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#0d9488] border-t-transparent" />
+      <div className="flex min-h-[250px] items-center justify-center gap-3 text-sm text-[#526f7d]">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#0d9488] border-t-transparent" />
         Chargement des mesures...
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e5f5f2] text-[#0d8c7c]">
-          <Activity size={23} />
+    <div className="space-y-4">
+      {/* En-tête */}
+      <div className="flex items-center gap-2">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#e5f5f2] text-[#0d8c7c]">
+          <Activity size={19} />
         </div>
 
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#123440] sm:text-3xl">
+          <h1 className="text-xl font-bold tracking-tight text-[#123440]">
             Enregistrer une mesure
           </h1>
-          <p className="mt-1 text-sm text-[#526f7d]">
+          <p className="mt-0.5 text-xs text-[#526f7d]">
             Renseignez vos données de santé quotidiennes.
           </p>
         </div>
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[1.35fr_0.95fr]">
+      <div className="grid items-start gap-4 lg:grid-cols-[1.35fr_0.95fr]">
         {/* Formulaire */}
-        <section className="rounded-[18px] border border-[#e5eaed] bg-white p-5 sm:p-7">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <section className="rounded-2xl border border-[#e5eaed] bg-white p-4 sm:p-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Type de mesure */}
             <div>
               <label
                 htmlFor="typeId"
-                className="mb-2 block text-sm font-medium text-[#526f7d]"
+                className="mb-1.5 block text-sm font-medium text-[#526f7d]"
               >
                 Type de mesure
               </label>
@@ -230,7 +232,7 @@ export default function AddMeasurePage() {
                   setError("");
                   setSuccess("");
                 }}
-                className="min-h-[52px] w-full rounded-xl border border-[#d7e0e4] bg-white px-4 text-sm text-[#173744] outline-none transition focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/15"
+                className="min-h-[44px] w-full rounded-xl border border-[#d7e0e4] bg-white px-3 text-sm text-[#173744] outline-none transition focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/15"
                 required
               >
                 <option value="">Sélectionner un type de mesure</option>
@@ -242,12 +244,13 @@ export default function AddMeasurePage() {
               </select>
             </div>
 
+            {/* Champs de valeurs */}
             {selectedType && (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 <div>
                   <label
                     htmlFor="valeur"
-                    className="mb-2 block text-sm font-medium text-[#526f7d]"
+                    className="mb-1.5 block text-sm font-medium text-[#526f7d]"
                   >
                     {selectedType.libelle_valeur || "Valeur"} (
                     {selectedType.unite})
@@ -261,22 +264,17 @@ export default function AddMeasurePage() {
                     onChange={(event) => setValeur(event.target.value)}
                     min={selectedType.valeur_min}
                     max={selectedType.valeur_max}
-                    placeholder="Saisir la valeur"
+                    placeholder={`Entre ${selectedType.valeur_min} et ${selectedType.valeur_max} ${selectedType.unite}`}
                     required
-                    className="min-h-[52px] w-full rounded-xl border border-[#d7e0e4] bg-white px-4 text-sm text-[#173744] outline-none transition placeholder:text-slate-400 focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/15"
+                    className="min-h-[44px] w-full rounded-xl border border-[#d7e0e4] bg-white px-3 text-sm text-[#173744] outline-none transition placeholder:text-xs placeholder:text-slate-400 focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/15"
                   />
-
-                  <p className="mt-2 text-xs text-[#78909b]">
-                    Valeur autorisée : {selectedType.valeur_min} à{" "}
-                    {selectedType.valeur_max} {selectedType.unite}
-                  </p>
                 </div>
 
                 {selectedType.deux_valeurs && (
                   <div>
                     <label
                       htmlFor="valeurSecondaire"
-                      className="mb-2 block text-sm font-medium text-[#526f7d]"
+                      className="mb-1.5 block text-sm font-medium text-[#526f7d]"
                     >
                       {selectedType.libelle_valeur_secondaire ||
                         "Deuxième valeur"}
@@ -292,25 +290,20 @@ export default function AddMeasurePage() {
                       }
                       min={selectedType.valeur_secondaire_min}
                       max={selectedType.valeur_secondaire_max}
-                      placeholder="Saisir la deuxième valeur"
+                      placeholder={`Entre ${selectedType.valeur_secondaire_min} et ${selectedType.valeur_secondaire_max}`}
                       required
-                      className="min-h-[52px] w-full rounded-xl border border-[#d7e0e4] bg-white px-4 text-sm text-[#173744] outline-none transition placeholder:text-slate-400 focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/15"
+                      className="min-h-[44px] w-full rounded-xl border border-[#d7e0e4] bg-white px-3 text-sm text-[#173744] outline-none transition placeholder:text-xs placeholder:text-slate-400 focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/15"
                     />
-
-                    <p className="mt-2 text-xs text-[#78909b]">
-                      Valeur autorisée :{" "}
-                      {selectedType.valeur_secondaire_min} à{" "}
-                      {selectedType.valeur_secondaire_max}
-                    </p>
                   </div>
                 )}
               </div>
             )}
 
+            {/* Date */}
             <div>
               <label
                 htmlFor="dateMesure"
-                className="mb-2 block text-sm font-medium text-[#526f7d]"
+                className="mb-1.5 block text-sm font-medium text-[#526f7d]"
               >
                 Date
               </label>
@@ -320,14 +313,15 @@ export default function AddMeasurePage() {
                 type="text"
                 value={`${formatToday(resume?.date_du_jour)} (Africa/Casablanca)`}
                 readOnly
-                className="min-h-[52px] w-full rounded-xl border border-[#e5eaed] bg-[#f3f6f7] px-4 text-sm text-[#173744] outline-none"
+                className="min-h-[44px] w-full rounded-xl border border-[#e5eaed] bg-[#f3f6f7] px-3 text-sm text-[#173744] outline-none"
               />
             </div>
 
+            {/* Commentaire */}
             <div>
               <label
                 htmlFor="commentaire"
-                className="mb-2 block text-sm font-medium text-[#526f7d]"
+                className="mb-1.5 block text-sm font-medium text-[#526f7d]"
               >
                 Commentaire
                 <span className="ml-1 text-xs text-slate-400">
@@ -339,19 +333,21 @@ export default function AddMeasurePage() {
                 id="commentaire"
                 value={commentaire}
                 onChange={(event) => setCommentaire(event.target.value)}
-                rows={3}
+                rows={2}
                 maxLength={500}
                 placeholder="Ajouter une remarque..."
-                className="w-full resize-y rounded-xl border border-[#d7e0e4] bg-white px-4 py-3 text-sm text-[#173744] outline-none transition placeholder:text-slate-400 focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/15"
+                className="w-full resize-y rounded-xl border border-[#d7e0e4] bg-white px-3 py-2.5 text-sm text-[#173744] outline-none transition placeholder:text-slate-400 focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/15"
               />
+
               <p className="mt-1 text-right text-xs text-slate-400">
                 {commentaire.length}/500
               </p>
             </div>
 
+            {/* Messages */}
             {alreadyRecorded && (
-              <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                <AlertCircle size={19} className="shrink-0" />
+              <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                <AlertCircle size={17} className="shrink-0" />
                 <p>
                   Cette mesure est déjà enregistrée aujourd'hui. Vous
                   pourrez l'enregistrer à nouveau demain.
@@ -360,32 +356,33 @@ export default function AddMeasurePage() {
             )}
 
             {error && (
-              <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                <AlertCircle size={19} className="shrink-0" />
+              <div className="flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                <AlertCircle size={17} className="shrink-0" />
                 <p>{error}</p>
               </div>
             )}
 
             {success && (
-              <div className="flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-                <CheckCircle2 size={19} className="shrink-0" />
+              <div className="flex gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                <CheckCircle2 size={17} className="shrink-0" />
                 <p>{success}</p>
               </div>
             )}
 
-            <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center">
+            {/* Boutons */}
+            <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
               <button
                 type="submit"
                 disabled={saving || !selectedType || alreadyRecorded}
-                className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-[#0d8c7c] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#08796c] focus:outline-none focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl bg-[#0d8c7c] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#08796c] focus:outline-none focus:ring-2 focus:ring-[#0d9488] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Save size={18} />
+                <Save size={17} />
                 {saving ? "Enregistrement..." : "Enregistrer la mesure"}
               </button>
 
               <Link
                 to="/mesures"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-xl border border-[#d7e0e4] bg-white px-6 py-3 text-sm font-semibold text-[#526f7d] transition hover:bg-[#f3f6f7]"
+                className="inline-flex min-h-[42px] items-center justify-center rounded-xl border border-[#d7e0e4] bg-white px-5 py-2.5 text-sm font-semibold text-[#526f7d] transition hover:bg-[#f3f6f7]"
               >
                 Annuler
               </Link>

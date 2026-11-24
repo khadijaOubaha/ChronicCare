@@ -91,45 +91,45 @@ export default function HistoryPage() {
   const total = data?.total ?? 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* En-tête */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e5f5f2] text-[#0d8c7c]">
-          <History size={23} />
+      <div className="flex items-center gap-2">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#e5f5f2] text-[#0d8c7c]">
+          <History size={19} />
         </div>
 
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#123440] sm:text-3xl">
+          <h1 className="text-xl font-bold tracking-tight text-[#123440]">
             Historique des mesures
           </h1>
-          <p className="mt-1 text-sm text-[#526f7d]">
+          <p className="mt-0.5 text-xs text-[#526f7d]">
             Retrouvez et consultez vos précédentes mesures de santé.
           </p>
         </div>
       </div>
 
       {/* Filtres */}
-      <section className="rounded-[18px] border border-[#e5eaed] bg-white p-5 sm:p-6">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e5f5f2] text-[#0d8c7c]">
-            <Filter size={19} />
+      <section className="rounded-2xl border border-[#e5eaed] bg-white p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e5f5f2] text-[#0d8c7c]">
+            <Filter size={17} />
           </div>
 
           <div>
-            <h2 className="font-bold text-[#123440]">
+            <h2 className="text-sm font-bold text-[#123440]">
               Filtrer les résultats
             </h2>
-            <p className="mt-1 text-xs text-[#78909b]">
+            <p className="mt-0.5 text-xs text-[#78909b]">
               Sélectionnez les critères de recherche.
             </p>
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label
               htmlFor="filter-type"
-              className="mb-2 block text-sm font-medium text-[#526f7d]"
+              className="mb-1.5 block text-xs font-medium text-[#526f7d]"
             >
               Type de mesure
             </label>
@@ -140,7 +140,7 @@ export default function HistoryPage() {
               onChange={(event) =>
                 changeFilter(setTypeId, event.target.value)
               }
-              className="min-h-[48px] w-full rounded-xl border border-[#d7e0e4] bg-white px-4 text-sm text-[#173744] outline-none transition focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/15"
+              className="min-h-[42px] w-full rounded-lg border border-[#d7e0e4] bg-white px-3 text-xs text-[#173744] outline-none transition focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/15"
             >
               <option value="">Tous les types</option>
               {types.map((type) => (
@@ -154,7 +154,7 @@ export default function HistoryPage() {
           <div>
             <label
               htmlFor="filter-period"
-              className="mb-2 block text-sm font-medium text-[#526f7d]"
+              className="mb-1.5 block text-xs font-medium text-[#526f7d]"
             >
               Période
             </label>
@@ -165,7 +165,7 @@ export default function HistoryPage() {
               onChange={(event) =>
                 changeFilter(setJours, event.target.value)
               }
-              className="min-h-[48px] w-full rounded-xl border border-[#d7e0e4] bg-white px-4 text-sm text-[#173744] outline-none transition focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/15"
+              className="min-h-[42px] w-full rounded-lg border border-[#d7e0e4] bg-white px-3 text-xs text-[#173744] outline-none transition focus:border-[#0d9488] focus:ring-2 focus:ring-[#0d9488]/15"
             >
               <option value="7">7 derniers jours</option>
               <option value="30">30 derniers jours</option>
@@ -177,42 +177,43 @@ export default function HistoryPage() {
       </section>
 
       {/* Tableau des mesures */}
-      <section className="overflow-hidden rounded-[18px] border border-[#e5eaed] bg-white">
-        <div className="flex flex-col justify-between gap-3 border-b border-[#e8edef] px-5 py-5 sm:flex-row sm:items-center sm:px-6">
+      <section className="overflow-hidden rounded-2xl border border-[#e5eaed] bg-white">
+        <div className="flex flex-col justify-between gap-2 border-b border-[#e8edef] px-4 py-3 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-lg font-bold text-[#123440]">
+            <h2 className="text-sm font-bold text-[#123440]">
               Mes enregistrements
             </h2>
-            <p className="mt-1 text-sm text-[#78909b]">
-              {total} mesure{total > 1 ? "s" : ""} enregistrée{total > 1 ? "s" : ""}
+            <p className="mt-0.5 text-xs text-[#78909b]">
+              {total} mesure{total > 1 ? "s" : ""} enregistrée
+              {total > 1 ? "s" : ""}
             </p>
           </div>
 
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e5f5f2] text-[#0d8c7c]">
-            <Activity size={20} />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e5f5f2] text-[#0d8c7c]">
+            <Activity size={17} />
           </div>
         </div>
 
         {loading ? (
-          <div className="flex min-h-[230px] flex-col items-center justify-center gap-3 text-sm text-[#78909b]">
-            <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-[#dcefeb] border-t-[#0d8c7c]" />
+          <div className="flex min-h-[180px] flex-col items-center justify-center gap-3 text-xs text-[#78909b]">
+            <div className="h-6 w-6 animate-spin rounded-full border-[3px] border-[#dcefeb] border-t-[#0d8c7c]" />
             Chargement de l'historique...
           </div>
         ) : error ? (
-          <div className="m-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
             {error}
           </div>
         ) : items.length === 0 ? (
-          <div className="flex min-h-[260px] flex-col items-center justify-center px-5 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f0f5f5] text-[#78909b]">
-              <History size={27} />
+          <div className="flex min-h-[210px] flex-col items-center justify-center px-4 text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#f0f5f5] text-[#78909b]">
+              <History size={23} />
             </div>
 
-            <h3 className="font-semibold text-[#173744]">
+            <h3 className="text-sm font-semibold text-[#173744]">
               Aucun enregistrement trouvé
             </h3>
 
-            <p className="mt-2 max-w-sm text-sm text-[#78909b]">
+            <p className="mt-1.5 max-w-sm text-xs text-[#78909b]">
               Aucune mesure n'a été enregistrée pour les filtres sélectionnés.
               Essayez une autre période.
             </p>
@@ -228,7 +229,7 @@ export default function HistoryPage() {
                       (heading) => (
                         <th
                           key={heading}
-                          className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#78909b]"
+                          className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-[#78909b]"
                         >
                           {heading}
                         </th>
@@ -243,10 +244,10 @@ export default function HistoryPage() {
                       key={item.id}
                       className="transition hover:bg-[#f8fbfa]"
                     >
-                      <td className="whitespace-nowrap px-6 py-5 text-sm text-[#526f7d]">
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-[#526f7d]">
                         <div className="flex items-center gap-2">
                           <CalendarDays
-                            size={16}
+                            size={14}
                             className="text-[#0d8c7c]"
                           />
                           {formatDate(
@@ -255,26 +256,26 @@ export default function HistoryPage() {
                         </div>
                       </td>
 
-                      <td className="px-6 py-5">
-                        <span className="font-semibold text-[#173744]">
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-semibold text-[#173744]">
                           {item.type_mesure?.nom || "Mesure"}
                         </span>
                       </td>
 
-                      <td className="px-6 py-5">
-                        <span className="inline-flex rounded-lg bg-[#e5f5f2] px-3 py-2 text-sm font-bold text-[#08796c]">
+                      <td className="px-4 py-3">
+                        <span className="inline-flex rounded-md bg-[#e5f5f2] px-2.5 py-1.5 text-xs font-bold text-[#08796c]">
                           {formatValue(item)}
                         </span>
-                        <span className="ml-2 text-xs text-[#78909b]">
+                        <span className="ml-1.5 text-[10px] text-[#78909b]">
                           {item.type_mesure?.unite || ""}
                         </span>
                       </td>
 
-                      <td className="max-w-xs px-6 py-5 text-sm text-[#526f7d]">
+                      <td className="max-w-xs px-4 py-3 text-xs text-[#526f7d]">
                         {item.commentaire ? (
                           <span className="flex items-start gap-2">
                             <MessageSquare
-                              size={15}
+                              size={13}
                               className="mt-0.5 shrink-0 text-[#78909b]"
                             />
                             {item.commentaire}
@@ -290,20 +291,20 @@ export default function HistoryPage() {
             </div>
 
             {/* Cartes mobile */}
-            <div className="space-y-3 p-4 md:hidden">
+            <div className="space-y-2.5 p-3 md:hidden">
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-[#e5eaed] p-4"
+                  className="rounded-lg border border-[#e5eaed] p-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="font-semibold text-[#173744]">
+                      <h3 className="text-xs font-semibold text-[#173744]">
                         {item.type_mesure?.nom || "Mesure"}
                       </h3>
 
-                      <p className="mt-2 flex items-center gap-1.5 text-xs text-[#78909b]">
-                        <CalendarDays size={14} />
+                      <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-[#78909b]">
+                        <CalendarDays size={12} />
                         {formatDate(
                           item.date_mesure || item.jour_mesure
                         )}
@@ -311,19 +312,19 @@ export default function HistoryPage() {
                     </div>
 
                     <div className="text-right">
-                      <p className="rounded-lg bg-[#e5f5f2] px-3 py-2 text-sm font-bold text-[#08796c]">
+                      <p className="rounded-md bg-[#e5f5f2] px-2.5 py-1.5 text-xs font-bold text-[#08796c]">
                         {formatValue(item)}
                       </p>
-                      <p className="mt-1 text-xs text-[#78909b]">
+                      <p className="mt-1 text-[10px] text-[#78909b]">
                         {item.type_mesure?.unite || ""}
                       </p>
                     </div>
                   </div>
 
                   {item.commentaire && (
-                    <div className="mt-3 flex gap-2 border-t border-[#e8edef] pt-3 text-sm text-[#526f7d]">
+                    <div className="mt-2.5 flex gap-2 border-t border-[#e8edef] pt-2.5 text-xs text-[#526f7d]">
                       <MessageSquare
-                        size={15}
+                        size={13}
                         className="mt-0.5 shrink-0"
                       />
                       {item.commentaire}
@@ -334,8 +335,8 @@ export default function HistoryPage() {
             </div>
 
             {/* Pagination */}
-            <div className="flex flex-col gap-4 border-t border-[#e8edef] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <p className="text-sm text-[#78909b]">
+            <div className="flex flex-col gap-3 border-t border-[#e8edef] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-[#78909b]">
                 Page {data.page} sur {totalPages} · {total} mesure(s)
               </p>
 
@@ -344,9 +345,9 @@ export default function HistoryPage() {
                   type="button"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1 || loading}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#d7e0e4] bg-white px-4 text-sm font-semibold text-[#526f7d] transition hover:bg-[#f3f7f6] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#d7e0e4] bg-white px-3 text-xs font-semibold text-[#526f7d] transition hover:bg-[#f3f7f6] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronLeft size={14} />
                   Précédent
                 </button>
 
@@ -356,10 +357,10 @@ export default function HistoryPage() {
                     setPage((p) => Math.min(totalPages, p + 1))
                   }
                   disabled={page >= totalPages || loading}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#d7e0e4] bg-white px-4 text-sm font-semibold text-[#526f7d] transition hover:bg-[#f3f7f6] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[#d7e0e4] bg-white px-3 text-xs font-semibold text-[#526f7d] transition hover:bg-[#f3f7f6] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Suivant
-                  <ChevronRight size={16} />
+                  <ChevronRight size={14} />
                 </button>
               </div>
             </div>

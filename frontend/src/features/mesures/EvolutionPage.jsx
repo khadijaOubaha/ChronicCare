@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowLeft,
   TrendingUp,
   Activity,
   CalendarDays,
@@ -94,51 +93,41 @@ export default function EvolutionPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 pb-8">
+    <div className="mx-auto max-w-6xl space-y-4 pb-6">
       {/* En-tête */}
-      <div>
-        <Link
-          to="/mesures"
-          className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-teal-700"
-        >
-          <ArrowLeft size={17} />
-          Retour à mes mesures
-        </Link>
-
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-teal-700">
-              <TrendingUp size={17} />
-              Analyse de santé
-            </div>
-
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Évolution de mes mesures
-            </h1>
-
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              Suivez l'évolution de vos données de santé et visualisez vos
-              mesures au fil du temps.
-            </p>
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        <div>
+          <div className="mb-1.5 flex items-center gap-2 text-xs font-semibold text-teal-700">
+            <TrendingUp size={15} />
+            Analyse de santé
           </div>
 
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
-            <ChartLine size={27} />
-          </div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+            Évolution de mes mesures
+          </h1>
+
+          <p className="mt-1.5 max-w-2xl text-xs leading-5 text-slate-500">
+            Suivez l'évolution de vos données de santé et visualisez vos
+            mesures au fil du temps.
+          </p>
+        </div>
+
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+          <ChartLine size={21} />
         </div>
       </div>
 
       {/* Information */}
-      <div className="flex gap-3 rounded-2xl border border-teal-100 bg-teal-50/70 p-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-teal-700">
-          <Info size={19} />
+      <div className="flex gap-2.5 rounded-xl border border-teal-100 bg-teal-50/70 p-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-teal-700">
+          <Info size={16} />
         </div>
 
         <div>
-          <p className="text-sm font-semibold text-teal-900">
+          <p className="text-xs font-semibold text-teal-900">
             Comprendre votre évolution
           </p>
-          <p className="mt-1 text-sm leading-6 text-teal-800">
+          <p className="mt-1 text-xs leading-5 text-teal-800">
             La courbe présente les valeurs que vous avez enregistrées pendant
             la période sélectionnée. Elle vous permet de suivre leur évolution
             dans le temps.
@@ -147,27 +136,27 @@ export default function EvolutionPage() {
       </div>
 
       {/* Filtres */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-            <Filter size={19} />
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-4 flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+            <Filter size={16} />
           </div>
 
           <div>
-            <h2 className="font-semibold text-slate-900">
+            <h2 className="text-sm font-semibold text-slate-900">
               Paramètres du graphique
             </h2>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-0.5 text-xs text-slate-500">
               Choisissez les données à visualiser.
             </p>
           </div>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label
               htmlFor="evolution-type"
-              className="mb-2 block text-sm font-semibold text-slate-700"
+              className="mb-1.5 block text-xs font-semibold text-slate-700"
             >
               Type de mesure
             </label>
@@ -176,7 +165,7 @@ export default function EvolutionPage() {
               id="evolution-type"
               value={selectedTypeId}
               onChange={(event) => setTypeId(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-50"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-800 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-50"
             >
               {types.map((type) => (
                 <option key={type.id} value={type.id}>
@@ -189,10 +178,10 @@ export default function EvolutionPage() {
           <div>
             <label
               htmlFor="evolution-period"
-              className="mb-2 block text-sm font-semibold text-slate-700"
+              className="mb-1.5 block text-xs font-semibold text-slate-700"
             >
-              <span className="inline-flex items-center gap-2">
-                <CalendarDays size={15} className="text-slate-500" />
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays size={13} className="text-slate-500" />
                 Période
               </span>
             </label>
@@ -201,7 +190,7 @@ export default function EvolutionPage() {
               id="evolution-period"
               value={jours}
               onChange={(event) => setJours(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-50"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-800 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-50"
             >
               <option value="7">7 derniers jours</option>
               <option value="30">30 derniers jours</option>
@@ -212,87 +201,87 @@ export default function EvolutionPage() {
       </section>
 
       {/* Graphique */}
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col justify-between gap-3 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:px-6">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col justify-between gap-2.5 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-sm font-semibold text-slate-900">
               Courbe d'évolution
             </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-0.5 text-xs text-slate-500">
               {selectedType?.nom || "Évolution de vos mesures"}
               {selectedType?.unite ? ` · ${selectedType.unite}` : ""}
             </p>
           </div>
 
           {selectedType && (
-            <span className="inline-flex w-fit items-center gap-2 rounded-xl bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-800">
-              <Activity size={15} />
+            <span className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-teal-50 px-2.5 py-1.5 text-xs font-semibold text-teal-800">
+              <Activity size={13} />
               {selectedType.nom}
             </span>
           )}
         </div>
 
         {loading ? (
-          <div className="flex min-h-[320px] items-center justify-center gap-3 text-sm text-slate-500">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-teal-600 border-t-transparent" />
+          <div className="flex min-h-[260px] items-center justify-center gap-2 text-xs text-slate-500">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-teal-600 border-t-transparent" />
             Chargement du graphique...
           </div>
         ) : error ? (
-          <div className="m-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
             {error}
           </div>
         ) : !selectedTypeId ? (
-          <div className="flex min-h-[320px] flex-col items-center justify-center px-5 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-              <ClipboardList size={26} />
+          <div className="flex min-h-[260px] flex-col items-center justify-center px-4 text-center">
+            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+              <ClipboardList size={21} />
             </div>
 
-            <h3 className="font-semibold text-slate-800">
+            <h3 className="text-sm font-semibold text-slate-800">
               Aucun type de mesure disponible
             </h3>
 
-            <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
+            <p className="mt-1.5 max-w-sm text-xs leading-5 text-slate-500">
               Les types de mesures associés à votre profil ne sont pas encore
               disponibles.
             </p>
           </div>
         ) : !points.length ? (
-          <div className="flex min-h-[320px] flex-col items-center justify-center px-5 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-              <TrendingUp size={27} />
+          <div className="flex min-h-[260px] flex-col items-center justify-center px-4 text-center">
+            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+              <TrendingUp size={22} />
             </div>
 
-            <h3 className="font-semibold text-slate-800">
+            <h3 className="text-sm font-semibold text-slate-800">
               Pas encore de données disponibles
             </h3>
 
-            <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
+            <p className="mt-1.5 max-w-sm text-xs leading-5 text-slate-500">
               Aucune mesure n'a été enregistrée pour ce type pendant la période
               sélectionnée.
             </p>
 
             <Link
               to="/mesures/saisir"
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-teal-700 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-teal-800"
             >
               Enregistrer une mesure
             </Link>
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between gap-3 px-5 pt-5 sm:px-6">
-              <p className="text-sm text-slate-500">
+            <div className="flex items-center justify-between gap-2 px-4 pt-4">
+              <p className="text-xs text-slate-500">
                 {data?.total ?? points.length} point(s) enregistré(s)
               </p>
 
-              <span className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 Données disponibles
               </span>
             </div>
 
-            <div className="p-4 sm:p-6">
+            <div className="p-3 sm:p-4">
               <EvolutionChart
                 points={points}
                 label={selectedType?.nom || "Évolution"}

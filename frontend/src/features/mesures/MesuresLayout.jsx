@@ -36,25 +36,6 @@ export default function MesuresLayout() {
   return (
     <MesuresProvider>
       <div className="min-w-0 space-y-6">
-        {/* En-tête du module */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
-              <Activity size={25} />
-            </div>
-
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-                Mes mesures
-              </h1>
-
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                Consultez et suivez vos mesures de santé au quotidien.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* Navigation */}
         <nav
           className="flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"

@@ -14,6 +14,7 @@ const PATIENTS = process.env.PATIENTS_URL || "http://localhost:8001";
 const TREATMENTS = process.env.TREATMENTS_URL || "http://localhost:8002";
 const MESURES = process.env.MESURES_URL || "http://localhost:8003";
 const REMINDERS = process.env.REMINDERS_URL || "http://localhost:8004";
+
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -154,6 +155,24 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "0.0.0.0",
     port: 3000,
+    cors: false,
+    // En-têtes de sécurité HTTP pour l'environnement de développement.
+    headers: {
+      "Content-Security-Policy": [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' data: https://fonts.gstatic.com",
+        "img-src 'self' data: blob:",
+        "connect-src 'self' ws: http://localhost:8000 http://localhost:8001 http://localhost:8002 http://localhost:8003 http://localhost:8004",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+      ].join("; "),
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+    },
 
     proxy: {
       "/api/v1/auth": {
@@ -172,16 +191,18 @@ export default defineConfig(({ mode }) => ({
         target: TREATMENTS,
         changeOrigin: true,
       },
-      //remienders 
+
+      // Notifications et événements.
       "/api/v1/notifications": {
         target: REMINDERS,
         changeOrigin: true,
-
       },
+
       "/api/v1/events": {
         target: REMINDERS,
         changeOrigin: true,
-}, 
+      },
+
       // Téléconsultations : communication entre conteneurs Docker.
       "/api/v1/teleconsultations": {
         target: "http://teleconsultations-service:8005",

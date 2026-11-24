@@ -36,7 +36,7 @@ function formatValue(mesure, unite) {
     <>
       {principale}
       {secondaire != null ? ` / ${secondaire}` : ""}
-      <span className="ml-1 text-base font-medium text-slate-500">
+      <span className="ml-1 text-sm font-medium text-slate-500">
         {unite}
       </span>
     </>
@@ -88,13 +88,13 @@ function MeasureCard({ carte }) {
         </div>
       </div>
 
-      <p className="mt-2 truncate text-[27px] font-bold tracking-tight text-[#123440]">
+      <p className="mt-2 truncate text-2xl font-bold tracking-tight text-[#123440]">
         {enregistree
           ? formatValue(carte.mesure, carte.type_mesure.unite)
           : (
             <>
               —{" "}
-              <span className="text-base font-medium text-slate-500">
+              <span className="text-sm font-medium text-slate-500">
                 {carte.type_mesure.unite}
               </span>
             </>
@@ -142,21 +142,30 @@ export default function TodayPage() {
     );
   }
 
-  const patient = profil?.patient;
   const cartes = resume?.cartes ?? [];
   const enregistrees = resume?.enregistrees ?? 0;
-  const restantes = resume?.restantes ?? 0;
   const total = resume?.total ?? cartes.length;
   const date = resume?.date_du_jour;
 
-  const progress =
-    total > 0 ? Math.round((enregistrees / total) * 100) : 0;
+  // Toutes les mesures sont enregistrées lorsque le total est atteint.
+  const toutesEnregistrees = total > 0 && enregistrees >= total;
 
-  const diseaseName = getDiseaseName(patient?.disease_type);
+  const restantes = Math.max(total - enregistrees, 0);
+
+  const progress =
+    total > 0 ? Math.min(Math.round((enregistrees / total) * 100), 100) : 0;
+
+  const diseaseName = getDiseaseName(profil?.patient?.disease_type);
+
+  const message = toutesEnregistrees
+    ? "Toutes vos mesures du jour sont enregistrées."
+    : enregistrees === 0
+      ? `Aucune mesure enregistrée. Il vous reste ${restantes} à renseigner.`
+      : `${enregistrees} mesure${enregistrees > 1 ? "s" : ""} enregistrée${enregistrees > 1 ? "s" : ""}. Il vous en reste ${restantes}.`;
 
   return (
     <div className="space-y-6">
-      {/* Bannière de bienvenue */}
+      {/* Bannière de suivi */}
       <section className="relative overflow-hidden rounded-[20px] bg-gradient-to-r from-[#104e60] to-[#176b75] px-6 py-8 text-white sm:px-8 sm:py-9">
         <div className="flex flex-col justify-between gap-7 sm:flex-row sm:items-center">
           <div className="max-w-2xl">
@@ -165,25 +174,19 @@ export default function TodayPage() {
               Mon suivi de santé
             </div>
 
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Bonjour{patient?.first_name ? `, ${patient.first_name}` : ""} !
-            </h1>
-
-            <p className="mt-3 text-base leading-relaxed text-white/90">
-              {restantes > 0
-                ? `Il vous reste ${restantes} mesure${restantes > 1 ? "s" : ""} à renseigner aujourd'hui.`
-                : "Toutes vos mesures du jour sont enregistrées."}
-              {" "}
-              {formatToday(date)}.
+            <p className="text-sm leading-relaxed text-white/90">
+              {message} {formatToday(date)}.
             </p>
 
-            <Link
-              to="/mesures/saisir"
-              className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl bg-[#19aa9a] px-5 py-3 text-sm font-bold text-[#073c46] transition hover:bg-[#25bbaa] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#145b68]"
-            >
-              Saisir une mesure
-              <ArrowRight size={17} />
-            </Link>
+            {!toutesEnregistrees && (
+              <Link
+                to="/mesures/saisir"
+                className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl bg-[#19aa9a] px-5 py-3 text-sm font-bold text-[#073c46] transition hover:bg-[#25bbaa] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[#145b68]"
+              >
+                Saisir une mesure
+                <ArrowRight size={17} />
+              </Link>
+            )}
           </div>
 
           <div className="flex min-w-[170px] items-center justify-between gap-5 rounded-[18px] bg-white/15 px-6 py-5 sm:min-w-[200px] sm:flex-col sm:items-start">
@@ -191,7 +194,7 @@ export default function TodayPage() {
               <p className="text-sm font-medium text-teal-50">
                 Progression du jour
               </p>
-              <p className="mt-1 text-4xl font-bold tracking-tight">
+              <p className="mt-1 text-2xl font-bold tracking-tight">
                 {enregistrees} / {total}
               </p>
             </div>
