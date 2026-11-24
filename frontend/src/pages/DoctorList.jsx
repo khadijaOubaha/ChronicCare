@@ -1,6 +1,8 @@
 import { Ban, Check, Pencil, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "../api";
+import { teleconsultationsApi } from "../api/teleconsultationsApi";
+import { patientsApi } from "../api/patientsApi";
+import { getErrorMessage } from "../utils/errors";
 import { useAuth } from "../auth/AuthContext";
 import { tokenStorage } from "../auth/tokenStorage";
 import { IconButton, JoinButton, TeleRow, Toast } from "../components/Common";
@@ -54,7 +56,7 @@ function ConsultModal({ mode, item, patients, onClose, onSubmit }) {
         notes: notes.trim() || null,
       });
     } catch (err) {
-      setError(err.message);
+      setError(getErrorMessage(err));
       setBusy(false);
     }
   }
@@ -109,10 +111,10 @@ export default function DoctorList() {
   };
 
   const load = useCallback(() => {
-    api
-      .list(token, { doctor_id: user.id })
+    teleconsultationsApi
+      .list({ doctor_id: user.id })
       .then((data) => setItems(data.items))
-      .catch((e) => notify(e.message, "err"));
+      .catch((e) => notify(getErrorMessage(e), "err"));
   }, [token, user.id]);
 
   useEffect(() => {
@@ -122,7 +124,9 @@ export default function DoctorList() {
   }, [load]);
 
   useEffect(() => {
-    api.patients(token).then(setPatients).catch(() => setPatients([]));
+    patientsApi
+      .list({ limit: 100 })
+      .then((data) => setPatients(Array.isArray(data) ? data : (data?.items ?? []))).catch(() => setPatients([]));
   }, [token]);
 
   const nameOf = useCallback(
@@ -148,7 +152,7 @@ export default function DoctorList() {
       load();
       return true;
     } catch (e) {
-      notify(e.message, "err");
+      notify(getErrorMessage(e), "err");
       return false;
     }
   }
@@ -158,7 +162,7 @@ export default function DoctorList() {
     let promise;
     let okText;
     if (mode === "create") {
-      promise = api.create(token, {
+      promise = teleconsultationsApi.create({
         patient_id: values.patient_id,
         doctor_id: user.id,
         scheduled_at: values.scheduled_at,
@@ -167,21 +171,21 @@ export default function DoctorList() {
       });
       okText = "Téléconsultation planifiée.";
     } else if (mode === "confirm") {
-      promise = api.confirm(token, item.id, {
+      promise = teleconsultationsApi.confirm(item.id, {
         scheduled_at: values.scheduled_at,
         meeting_link: values.meeting_link,
         notes: values.notes,
       });
       okText = "Demande confirmée.";
     } else if (mode === "edit") {
-      promise = api.update(token, item.id, {
+      promise = teleconsultationsApi.update(item.id, {
         scheduled_at: values.scheduled_at,
         meeting_link: values.meeting_link,
         notes: values.notes,
       });
       okText = "Téléconsultation modifiée.";
     } else {
-      promise = api.update(token, item.id, { notes: values.notes });
+      promise = teleconsultationsApi.update(item.id, { notes: values.notes });
       okText = "Compte rendu enregistré.";
     }
     await promise; // en cas d'erreur, le formulaire l'affiche
@@ -191,7 +195,7 @@ export default function DoctorList() {
   }
 
   const setStatus = (t, status, question, okText) =>
-    window.confirm(question) && run(api.setStatus(token, t.id, status), okText);
+    window.confirm(question) && run(teleconsultationsApi.setStatus(t.id, status), okText);
 
   function actions(t) {
     return (

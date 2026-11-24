@@ -2,7 +2,8 @@
 import { ArrowLeft, CalendarClock, CheckCircle2, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { teleconsultationsApi } from "../api/teleconsultationsApi";
+import { getErrorMessage } from "../utils/errors";
 import { useAuth } from "../auth/AuthContext";
 import { tokenStorage } from "../auth/tokenStorage";
 import { Avatar } from "../components/Common";
@@ -41,7 +42,7 @@ export default function RequestPage() {
       }
 
       try {
-        const data = await api.doctors(token);
+        const data = await teleconsultationsApi.doctors();
 
         if (cancelled) return;
 
@@ -57,7 +58,7 @@ export default function RequestPage() {
         }
       } catch (e) {
         if (!cancelled) {
-          setError(e.message || "Impossible de charger les médecins.");
+          setError(getErrorMessage(e));
         }
       } finally {
         if (!cancelled) setDoctorsLoading(false);
@@ -91,7 +92,7 @@ export default function RequestPage() {
     setBusy(true);
 
     try {
-      await api.request(token, {
+      await teleconsultationsApi.request({
         doctor_id: doctorId,
         notes: notes.trim(),
         ...(wanted ? { scheduled_at: localInputToIso(wanted) } : {}),
@@ -100,7 +101,7 @@ export default function RequestPage() {
       setSent(true);
       setTimeout(() => navigate("/teleconsultations"), 1500);
     } catch (e) {
-      setError(e.message);
+      setError(getErrorMessage(e));
     } finally {
       setBusy(false);
     }

@@ -1,8 +1,8 @@
-
 import { Calendar, FileText, Plus, Search, Video } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api";
+import { teleconsultationsApi } from "../api/teleconsultationsApi";
+import { getErrorMessage } from "../utils/errors";
 import { useAuth } from "../auth/AuthContext";
 import { tokenStorage } from "../auth/tokenStorage";
 import { JoinButton, TeleRow } from "../components/Common";
@@ -48,7 +48,7 @@ export default function PatientList() {
 
   const [items, setItems] = useState(null);
   const [doctors, setDoctors] = useState([]);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
   const [doctorError, setDoctorError] = useState("");
   const [doctorsLoading, setDoctorsLoading] = useState(true);
 
@@ -57,14 +57,14 @@ export default function PatientList() {
 
   // Chargement des téléconsultations.
   const load = useCallback(() => {
-    api
-      .list(token)
+    teleconsultationsApi
+      .list()
       .then((data) => {
         setItems(Array.isArray(data?.items) ? data.items : []);
-        setError("");
+        setError(null);
       })
       .catch((e) => {
-        setError(e.message || "Impossible de charger les téléconsultations.");
+        setError(e);
       });
   }, [token]);
 
@@ -73,15 +73,13 @@ export default function PatientList() {
     setDoctorsLoading(true);
 
     try {
-      const data = await api.doctors(token);
+      const data = await teleconsultationsApi.doctors();
 
       setDoctors(Array.isArray(data) ? data : []);
       setDoctorError("");
     } catch (e) {
       setDoctors([]);
-      setDoctorError(
-        e.message || "Impossible de charger les médecins."
-      );
+      setDoctorError(getErrorMessage(e));
     } finally {
       setDoctorsLoading(false);
     }

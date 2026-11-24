@@ -10,7 +10,9 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { api } from "../api";
+import { teleconsultationsApi } from "../api/teleconsultationsApi";
+import { patientsApi } from "../api/patientsApi";
+import { getErrorMessage } from "../utils/errors";
 import { useAuth } from "../auth/AuthContext";
 import { tokenStorage } from "../auth/tokenStorage";
 import { ROLES } from "../auth/roles";
@@ -168,7 +170,7 @@ export default function DetailsPage() {
 
     async function loadTeleconsultation() {
       try {
-        const data = await api.get(token, id);
+        const data = await teleconsultationsApi.get(id);
 
         if (!cancelled) {
           setT(data);
@@ -177,9 +179,9 @@ export default function DetailsPage() {
       } catch (e) {
         if (!cancelled) {
           setError(
-            e.status === 404
+            e.response?.status === 404
               ? "Téléconsultation introuvable."
-              : e.message || "Impossible de charger la consultation."
+              : getErrorMessage(e)
           );
         }
       }
@@ -209,7 +211,7 @@ export default function DetailsPage() {
       setDoctorLoading(true);
 
       try {
-        const doctors = await api.doctors(token);
+        const doctors = await teleconsultationsApi.doctors();
 
         const foundDoctor = doctors.find(
           (d) => d.id === t.doctor_id
@@ -228,7 +230,7 @@ export default function DetailsPage() {
         if (!cancelled) {
           setDoctor(null);
           setDoctorError(
-            e.message || "Impossible de charger le médecin."
+            getErrorMessage(e)
           );
         }
       } finally {
@@ -261,7 +263,8 @@ export default function DetailsPage() {
       }
 
       try {
-        const list = await api.patients(token);
+        const data = await patientsApi.list({ limit: 100 });
+        const list = Array.isArray(data) ? data : (data?.items ?? []);
 
         if (cancelled) return;
 
