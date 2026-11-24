@@ -33,7 +33,7 @@ def test_patient_without_patient_profile(
     assert response.status_code == 404
 
     assert response.json()["detail"] == (
-        "Aucune fiche patient associee a ce compte."
+        "Aucune fiche patient associée à ce compte."
     )
 
 
@@ -48,7 +48,7 @@ def test_admin_get_patient_treatments(
     monkeypatch.setattr(
         treatment_router,
         "verify_patient",
-        lambda patient_id: None,
+        lambda patient_id, token: None,
     )
 
     response = client.get(

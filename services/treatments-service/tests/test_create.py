@@ -11,7 +11,7 @@ def test_create_treatment_success(
     monkeypatch.setattr(
         treatment_router,
         "verify_patient",
-        lambda patient_id: None,
+        lambda patient_id, token: None,
     )
 
     payload = {
@@ -22,7 +22,7 @@ def test_create_treatment_success(
         "frequency": "2 fois par jour",
         "start_date": "2026-01-01",
         "end_date": "2026-03-01",
-        "instructions": "Après les repas",
+        "instructions": "AprÃ¨s les repas",
     }
 
     response = client.post(

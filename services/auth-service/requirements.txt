@@ -6,3 +6,7 @@ psycopg[binary]
 pydantic[email]
 PyJWT
 pwdlib[argon2]
+
+pytest
+
+pytest-cov

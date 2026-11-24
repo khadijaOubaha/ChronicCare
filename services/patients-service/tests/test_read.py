@@ -1,7 +1,7 @@
 def test_get_patient_by_id(client, patient_email, admin_headers):
     create_response = client.post(
         "/api/v1/patients",
-        json={"first_name": "Read", "last_name": "Test", "email": patient_email, "sex": "F"},
+        json={"first_name": "Read", "last_name": "Test", "email": patient_email, "password": "TestPass123!", "disease": "HYPERTENSION", "sex": "F"},
         headers=admin_headers,
     )
     assert create_response.status_code == 201
@@ -21,7 +21,7 @@ def test_get_patient_not_found(client, admin_headers):
         headers=admin_headers,
     )
     assert response.status_code == 404
-    assert response.json()["detail"] == "Patient introuvable"
+    assert response.json()["detail"] == "Patient introuvable."
 
 
 def test_get_patient_requires_auth(client):

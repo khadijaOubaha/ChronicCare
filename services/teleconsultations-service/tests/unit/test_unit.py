@@ -20,7 +20,7 @@ def creds(token):
 
 
 def test_status_transitions_rules():
-    """REQUESTED et SCHEDULED évoluent ; COMPLETED et CANCELLED sont finaux."""
+    """REQUESTED et SCHEDULED Ã©voluent ; COMPLETED et CANCELLED sont finaux."""
     assert ALLOWED_TRANSITIONS["REQUESTED"] == {"SCHEDULED", "CANCELLED"}
     assert ALLOWED_TRANSITIONS["SCHEDULED"] == {"COMPLETED", "CANCELLED"}
     for final in ("COMPLETED", "CANCELLED"):
@@ -47,14 +47,14 @@ def test_table_matches_diagram_and_check_constraint():
 
 
 def test_check_constraint_requires_date_unless_requested():
-    """Sans date : permis seulement pour une demande (REQUESTED) ou une demande refusée."""
+    """Sans date : permis seulement pour une demande (REQUESTED) ou une demande refusÃ©e."""
     engine = create_engine("sqlite://")
     Base.metadata.create_all(bind=engine)
     session = sessionmaker(bind=engine)()
     session.add(Teleconsultation(
         patient_id=uuid.uuid4(), doctor_id=uuid.uuid4(), status="REQUESTED",
     ))
-    session.commit()  # demande sans date : acceptée
+    session.commit()  # demande sans date : acceptÃ©e
     session.add(Teleconsultation(
         patient_id=uuid.uuid4(), doctor_id=uuid.uuid4(), status="SCHEDULED",
     ))
@@ -63,9 +63,12 @@ def test_check_constraint_requires_date_unless_requested():
 
 
 def test_jwt_accepts_valid_token_and_rejects_others():
-    """Jeton valide -> utilisateur ; absent, falsifié, expiré ou rôle inconnu -> 401."""
+    """Jeton valide -> utilisateur ; absent, falsifiÃ©, expirÃ© ou rÃ´le inconnu -> 401."""
     user_id = uuid.uuid4()
-    assert get_current_user(creds(make_token(sub=user_id, role="PATIENT"))) == CurrentUser(user_id, "PATIENT")
+    user = get_current_user(creds(make_token(sub=user_id, role="PATIENT")))
+    assert user.id == user_id
+    assert user.role == "PATIENT"
+    assert user.access_token is not None
     for bad in (None, creds("pas-un-jeton"), creds(make_token(expires_in=-10)), creds(make_token(role="ROOT"))):
         with pytest.raises(HTTPException) as exc:
             get_current_user(bad)

@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
-# Charger le fichier .env à la racine de ChronicCare
+# Charger le fichier .env Ã  la racine de ChronicCare
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 load_dotenv(PROJECT_ROOT / ".env")
 
@@ -24,8 +24,8 @@ DATABASE_URL = (
     f"@127.0.0.1:{port}/{database}"
 )
 
-# Clé JWT de test – on force l'override pour que les tokens de test
-# soient toujours signés et vérifiés avec la même clé, indépendamment
+# ClÃ© JWT de test â€“ on force l'override pour que les tokens de test
+# soient toujours signÃ©s et vÃ©rifiÃ©s avec la mÃªme clÃ©, indÃ©pendamment
 # de ce que contient le fichier .env.
 JWT_SECRET_KEY = "test-secret-key-chroniccare-only"
 os.environ["DATABASE_URL"] = DATABASE_URL
@@ -37,7 +37,7 @@ test_engine = create_engine(DATABASE_URL)
 
 
 def make_token(role: str = "ADMIN") -> str:
-    """Génère un JWT de test pour simuler l'authentification."""
+    """GÃ©nÃ¨re un JWT de test pour simuler l'authentification."""
     import time
     payload = {
         "sub": str(uuid.uuid4()),
@@ -80,9 +80,51 @@ def patient_email():
 
     yield email
 
-    # Supprimer uniquement le patient créé par ce test
+    # Supprimer uniquement le patient crÃ©Ã© par ce test
     with test_engine.begin() as connection:
         connection.execute(
             text("DELETE FROM patients WHERE email = :email"),
             {"email": email},
         )
+
+
+from types import SimpleNamespace
+
+@pytest.fixture(autouse=True)
+def mock_auth_service(monkeypatch):
+    def fake_auth_post(url, *args, **kwargs):
+        if url.endswith("/api/v1/auth/create-patient"):
+            account_data = kwargs["json"]
+            user_id = uuid.uuid4()
+
+            with test_engine.begin() as connection:
+                connection.execute(
+                    text("""
+                        INSERT INTO users (
+                            id, full_name, email, hashed_password,
+                            role, is_active, created_at
+                        )
+                        VALUES (
+                            :id, :full_name, :email, :hashed_password,
+                            'PATIENT', TRUE, CURRENT_TIMESTAMP
+                        )
+                    """),
+                    {
+                        "id": user_id,
+                        "full_name": account_data.get("full_name", "Test Patient"),
+                        "email": account_data["email"],
+                        "hashed_password": "test-hashed-password",
+                    },
+                )
+
+            return SimpleNamespace(
+                status_code=201,
+                json=lambda: {"id": str(user_id)}
+            )
+
+        raise AssertionError(f"Unexpected HTTP request: {url}")
+
+    monkeypatch.setattr(
+        "app.routers.patients.httpx.post",
+        fake_auth_post
+    )

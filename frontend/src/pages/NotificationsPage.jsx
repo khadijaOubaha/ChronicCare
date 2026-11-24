@@ -441,31 +441,7 @@ export default function NotificationsPage() {
                   </div>
                 </div>
 
-                <div className="border-t border-slate-200 pt-5">
-                  <h3 className="mb-3 font-semibold text-slate-800">
-                    Informations de l'événement
-                  </h3>
 
-                  {selectedNotification.event_details ? (
-                    <div className="space-y-3">
-                      <p className="text-sm text-slate-700">
-                        Type : {selectedNotification.event_details.event_type}
-                      </p>
-                      <p className="text-sm text-slate-700">
-                        Date : {selectedNotification.event_details.occurred_at
-                          ? new Date(selectedNotification.event_details.occurred_at).toLocaleString("fr-FR")
-                          : "Non précisée"}
-                      </p>
-                      <pre className="overflow-x-auto rounded-lg bg-slate-50 p-4 text-xs leading-6 text-slate-700">
-                        {JSON.stringify(selectedNotification.event_details.data, null, 2)}
-                      </pre>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500">
-                      Aucun d?tail suppl?mentaire associ? ? cette notification.
-                    </p>
-                  )}
-                </div>
               </div>
             ) : null}
           </div>

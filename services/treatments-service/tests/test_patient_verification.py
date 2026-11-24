@@ -21,7 +21,7 @@ def test_verify_patient_success(monkeypatch):
         fake_get,
     )
 
-    verify_patient(uuid4())
+    verify_patient(uuid4(), "test-token")
 
 
 def test_verify_patient_not_found(monkeypatch):
@@ -34,7 +34,7 @@ def test_verify_patient_not_found(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as exc:
-        verify_patient(uuid4())
+        verify_patient(uuid4(), "test-token")
 
     assert exc.value.status_code == 404
 
@@ -52,7 +52,7 @@ def test_verify_inactive_patient(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as exc:
-        verify_patient(uuid4())
+        verify_patient(uuid4(), "test-token")
 
     assert exc.value.status_code == 409
 
@@ -74,14 +74,14 @@ def test_patients_service_unavailable(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as exc:
-        verify_patient(uuid4())
+        verify_patient(uuid4(), "test-token")
 
     assert exc.value.status_code == 503
 
 
 def test_patients_service_server_error(monkeypatch):
     def fake_get(*args, **kwargs):
-        return SimpleNamespace(status_code=500)
+        return SimpleNamespace(status_code=500, text="Internal Server Error")
 
     monkeypatch.setattr(
         "app.routers.treatments.httpx.get",
@@ -89,7 +89,7 @@ def test_patients_service_server_error(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as exc:
-        verify_patient(uuid4())
+        verify_patient(uuid4(), "test-token")
 
     assert exc.value.status_code == 502
 
@@ -110,6 +110,6 @@ def test_patients_service_invalid_json(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as exc:
-        verify_patient(uuid4())
+        verify_patient(uuid4(), "test-token")
 
     assert exc.value.status_code == 502
